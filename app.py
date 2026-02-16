@@ -1,6 +1,73 @@
 import streamlit as st
 import numpy as np
 
+# 1. 定義 CSS 樣式 (依據你的分類規範：紅、藍、橘、灰、綠)
+bingo_style = """
+<style>
+    /* 基礎按鈕樣式 */
+    .stButton>button {
+        width: 100%;
+        height: 110px;
+        background-color: white;
+        color: #333333;
+        border-radius: 12px;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+
+    /* [核心] 第 13 格：紅色線框 + 放大 */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(13) button {
+        border: 4px solid #FF4B4B !important;
+        transform: scale(1.1);
+        box-shadow: 0px 0px 15px rgba(255, 75, 75, 0.3);
+    }
+
+    /* [職涯/技能]：藍色線框 */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(4) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(7) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(9) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(12) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(14) button {
+        border: 3px solid #1E90FF !important;
+    }
+
+    /* [生活/旅遊]：橘色線框 */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(5) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(6) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(10) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(11) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(15) button {
+        border: 3px solid #FFA500 !important;
+    }
+
+    /* [健康/日常]：綠色線框 */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(21) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(22) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(23) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(24) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(25) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(20) button {
+        border: 3px solid #32CD32 !important;
+    }
+
+    /* [創作/作品]：灰色線框 */
+    /* 預設已為灰色，此處加強顯示 */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(3) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(8) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(16) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(17) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(18) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(19) button {
+        border: 3px solid #D3D3D3 !important;
+    }
+</style>
+"""
+
+# 2. 注入 CSS
+st.markdown(bingo_style, unsafe_allow_html=True)
+
 # 1. 頁面設定與標題
 st.set_page_config(page_title="Custom Bingo Creator", layout="centered")
 st.title("🎯 2026人生賓果清單")
