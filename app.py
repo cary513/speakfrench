@@ -70,7 +70,7 @@ with st.sidebar:
         st.rerun()
         
     # 功能按鈕 2：重置
-    if st.button("🗑️ 重置所有進度", use_container_width=True):
+    if st.button("重設", use_container_width=True):
         st.session_state.board_state = np.zeros((5, 5), dtype=bool)
         st.session_state.last_lines_count = 0
         st.rerun()
