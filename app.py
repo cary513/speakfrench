@@ -1,6 +1,62 @@
 import streamlit as st
 import numpy as np
-from datetime import datetime # 增加這行來處理時間
+import streamlit as st
+from datetime import datetime
+
+# --- 側邊欄：復古翻牌倒數計時器 ---
+with st.sidebar:
+    # 1. 計算剩餘天數
+    target_date = datetime(2027, 1, 1)
+    today = datetime.now()
+    remaining = target_date - today
+    days_left = f"{remaining.days:03}"  # 補零，確保三位數對齊
+
+    # 2. 注入翻牌感 CSS
+    st.markdown("""
+    <style>
+    .flip-container {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        background: #2D2D2D; /* 深色底座 */
+        padding: 20px 10px;
+        border-radius: 12px;
+        box-shadow: inset 0px 4px 10px rgba(0,0,0,0.5);
+        margin-bottom: 25px;
+    }
+    .flip-card {
+        background: #444; /* 牌面顏色 */
+        color: #FF4B4B; /* 數字顏色，對齊核心格 */
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 2.5rem;
+        font-weight: bold;
+        padding: 10px 15px;
+        border-radius: 6px;
+        position: relative;
+        /* 模擬翻牌中間的橫線 */
+        background-image: linear-gradient(to bottom, #444 48%, #222 50%, #444 52%);
+        border: 1px solid #111;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
+    }
+    .flip-label {
+        text-align: center;
+        color: #888;
+        font-size: 0.7rem;
+        margin-top: 8px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+    </style>
+    
+    <div class="flip-label">Countdown to 2027 New Year</div>
+    <div class="flip-container">
+        <div class="flip-card">""" + days_left[0] + """</div>
+        <div class="flip-card">""" + days_left[1] + """</div>
+        <div class="flip-card">""" + days_left[2] + """</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ... 原有的編輯格子內容 ...
 
 # --- 1. 頁面配置與五色線框 CSS ---
 st.set_page_config(page_title="Solo Evolution Bingo", layout="wide") # 改為寬版佈局更適合 Dashboard
