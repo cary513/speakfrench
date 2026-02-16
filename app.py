@@ -1,10 +1,10 @@
 import streamlit as st
 import numpy as np
 
-# --- 1. 頁面配置與五色線框 CSS ---
+# --- 1. 頁面配置與五色線框 CSS (針對 Key 精確鎖定) ---
 st.markdown("""
 <style>
-    /* 1. 基礎設定：所有格子高度一致 */
+    /* 1. 基礎格子樣式 */
     .stButton>button {
         width: 100%;
         height: 110px;
@@ -13,56 +13,41 @@ st.markdown("""
         font-weight: bold;
         transition: all 0.2s;
         border: 3px solid #D3D3D3; /* 預設灰色 */
+        white-space: normal;
+        word-wrap: break-word;
     }
 
-    /* 2. [紅色 - 核心] 第 13 格 */
-    .stButton:nth-of-type(13) button {
+    /* 2. [紅色 - 核心] 第 13 格 (編號 12) */
+    div[data-testid="stButton"] > button[key="btn_12"] {
         border: 3px solid #FF4B4B !important;
-        background-color: #FFF5F5;
+        background-color: #FFF5F5 !important;
     }
 
-    /* 3. [橘色 - 生活旅遊] 左右兩行 (1, 6, 11, 16, 21 和 5, 10, 15, 20, 25) */
-    .stButton:nth-of-type(1) button, .stButton:nth-of-type(6) button, 
-    .stButton:nth-of-type(11) button, .stButton:nth-of-type(16) button, 
-    .stButton:nth-of-type(21) button, .stButton:nth-of-type(5) button, 
-    .stButton:nth-of-type(10) button, .stButton:nth-of-type(15) button, 
-    .stButton:nth-of-type(20) button, .stButton:nth-of-type(25) button {
+    /* 3. [橘色 - 生活旅遊] 左右兩行 (0,5,10,15,20 和 4,9,14,19,24) */
+    div[data-testid="stButton"] > button[key="btn_0"], div[data-testid="stButton"] > button[key="btn_5"],
+    div[data-testid="stButton"] > button[key="btn_10"], div[data-testid="stButton"] > button[key="btn_15"],
+    div[data-testid="stButton"] > button[key="btn_20"], div[data-testid="stButton"] > button[key="btn_4"],
+    div[data-testid="stButton"] > button[key="btn_9"], div[data-testid="stButton"] > button[key="btn_14"],
+    div[data-testid="stButton"] > button[key="btn_19"], div[data-testid="stButton"] > button[key="btn_24"] {
         border: 3px solid #FFA500 !important;
     }
 
-    /* 4. [灰色 - 創作作品] 中間十字軸 (3, 8, 12, 14, 18, 23) */
-    .stButton:nth-of-type(3) button, .stButton:nth-of-type(8) button, 
-    .stButton:nth-of-type(12) button, .stButton:nth-of-type(14) button, 
-    .stButton:nth-of-type(18) button, .stButton:nth-of-type(23) button {
-        border: 3px solid #D3D3D3 !important;
+    /* 4. [藍色 - 職涯目標] (1,3,6,8,16,18,21,23) */
+    div[data-testid="stButton"] > button[key="btn_1"], div[data-testid="stButton"] > button[key="btn_3"],
+    div[data-testid="stButton"] > button[key="btn_6"], div[data-testid="stButton"] > button[key="btn_8"],
+    div[data-testid="stButton"] > button[key="btn_16"], div[data-testid="stButton"] > button[key="btn_18"],
+    div[data-testid="stButton"] > button[key="btn_21"], div[data-testid="stButton"] > button[key="btn_23"] {
+        border: 3px solid #1E90FF !important;
     }
 
-    /* 5. [藍色 - 職涯目標] 其餘格子 (2, 4, 7, 9, 17, 19, 22, 24) */
-    .stButton:nth-of-type(2) button, .stButton:nth-of-type(4) button, 
-    .stButton:nth-of-type(7) button, .stButton:nth-of-type(9) button, 
-    .stButton:nth-of-type(17) button, .stButton:nth-of-type(19) button, 
-    .stButton:nth-of-type(22) button, .stButton:nth-of-type(24) button {
-        border: 3px solid #1E90FF !important;
+    /* 5. [灰色 - 創作作品] 中間十字 (2,7,11,13,17,22) */
+    div[data-testid="stButton"] > button[key="btn_2"], div[data-testid="stButton"] > button[key="btn_7"],
+    div[data-testid="stButton"] > button[key="btn_11"], div[data-testid="stButton"] > button[key="btn_13"],
+    div[data-testid="stButton"] > button[key="btn_17"], div[data-testid="stButton"] > button[key="btn_22"] {
+        border: 3px solid #D3D3D3 !important;
     }
 </style>
 """, unsafe_allow_html=True)
-# --- 2. 初始化 Session State ---
-if 'board_state' not in st.session_state:
-    st.session_state.board_state = np.zeros((5, 5), dtype=bool)
-if 'last_lines_count' not in st.session_state:
-    st.session_state.last_lines_count = 0
-if 'edit_mode' not in st.session_state:
-    st.session_state.edit_mode = True
-if 'custom_tasks' not in st.session_state:
-    # 預設為你之前的職涯進化內容
-    st.session_state.custom_tasks = [
-        "Python 腳本", "MJ UI 指南", "數據調研", "首筆歐收", "遠端 4hr",
-        "GSheets 串接", "LLM 輔助", "User Flow", "法文面試", "移動設備",
-        "API 實作", "GitHub 10+", "Solo Evolution", "北極星指標", "英文作品集",
-        "Firefly 合成", "A/B Test", "MVP 上線", "國際社群", "辦公危機",
-        "Rive 組件", "AI UX Writing", "非同步溝通", "LinkedIn 推薦", "遠端合約"
-    ]
-
 # --- 3. 側邊欄設定 ---
 with st.sidebar:
     st.header("⚙️ 賓果設定")
