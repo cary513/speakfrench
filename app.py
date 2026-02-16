@@ -3,7 +3,7 @@ import numpy as np
 
 # 1. 頁面設定與標題
 st.set_page_config(page_title="Custom Bingo Creator", layout="centered")
-st.title("🎯 自訂人生賓果產生器")
+st.title("🎯 2026人生賓果清單")
 st.write("輸入你的 25 個挑戰目標，打造專屬的進化地圖！")
 
 # 2. 初始化狀態
