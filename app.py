@@ -69,3 +69,9 @@ st.subheader(f"目前連線數：{lines_completed}")
 if lines_completed > 0:
     st.balloons()
     st.success(f"太棒了！你已經解鎖了 {lines_completed} 條職涯連線！")
+elif lines_completed >= 2:
+    # 達成兩條線以上的大慶祝
+    st.balloons() 
+    st.confetti = True # 如果有安裝額外套件的話
+    st.success(f"🎊 太強了！你已進入「加速進化」階段，解鎖了 {lines_completed} 條連線！")
+    st.snow() # 增加一點視覺上的層次感
