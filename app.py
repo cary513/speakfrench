@@ -1,6 +1,5 @@
 import streamlit as st
 import numpy as np
-
 st.markdown("""
 <style>
     /* 1. 基礎格子樣式：統一所有格子的大小與基礎屬性 */
