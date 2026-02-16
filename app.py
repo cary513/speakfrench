@@ -48,32 +48,53 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-# --- 3. 側邊欄設定 ---
+這是一個非常關鍵的 UX（使用者體驗）優化。在產品設計中，我們希望使用者的操作路徑是直覺且低摩擦的。目前的邏輯透過 st.sidebar 切換模式雖然可行，但會產生「上下文切換」的斷裂感。
+
+為了達成「原位修改與確定」且不跳轉頁面，我們需要優化 State Management（狀態管理）。我們可以將側邊欄的功能簡化，並在主畫面提供一個更明顯的「編輯/儲存」切換機制。
+
+以下是針對你的需求修正後的程式碼片段：
+
+🛠️ 修正後的側邊欄與模式切換邏輯
+這段代碼將原本的切換邏輯改為更明確的「修改內容」與「確定挑戰」，並保持在同一頁面操作：
+
+Python
+
+# --- 3. 側邊欄與模式控制 (原位修改邏輯) ---
 with st.sidebar:
-    st.header("⚙️ 賓果設定")
-    if st.button("🔄 切換 編輯 / 挑戰 模式"):
-        st.session_state.edit_mode = not st.session_state.edit_mode
-        st.rerun()
+    st.header("⚙️ 賓果儀表板")
     
-    st.divider()
-    if st.session_state.edit_mode:
-        st.subheader("✍️ 編輯格子內容")
-        for i in range(25):
-            st.session_state.custom_tasks[i] = st.text_input(f"格子 {i+1}", value=st.session_state.custom_tasks[i], key=f"in_{i}")
+    # 使用 radio 或 toggle 來讓狀態更明確，避免按鈕跳轉感的誤解
+    mode_label = "✍️ 正在編輯內容" if st.session_state.edit_mode else "🎯 正在挑戰中"
+    if st.checkbox(mode_label, value=st.session_state.edit_mode, key="mode_toggle"):
+        st.session_state.edit_mode = True
     else:
-        st.success("🎯 挑戰模式中")
-        if st.button("🗑️ 重置進度"):
+        st.session_state.edit_mode = False
+
+    st.divider()
+    
+    if st.session_state.edit_mode:
+        st.info("💡 修改說明：在下方編輯區輸入完畢後，取消勾選左側「正在編輯」即可開始挑戰。")
+    else:
+        if st.button("🗑️ 重置所有進度"):
             st.session_state.board_state = np.zeros((5, 5), dtype=bool)
             st.session_state.last_lines_count = 0
             st.rerun()
 
-# --- 4. 邏輯函式 ---
-def check_bingo(state):
-    rows = np.all(state, axis=1).sum()
-    cols = np.all(state, axis=0).sum()
-    diag1 = np.all(np.diag(state))
-    diag2 = np.all(np.diag(np.fliplr(state)))
-    return int(rows + cols + diag1 + diag2)
+# --- 4. 主畫面內容區 (編輯與顯示整合) ---
+if st.session_state.edit_mode:
+    st.subheader("📝 編輯你的 25 格願望清單")
+    # 使用 columns 讓編輯區不要太長
+    edit_cols = st.columns(5)
+    for i in range(25):
+        with edit_cols[i % 5]:
+            st.session_state.custom_tasks[i] = st.text_input(
+                f"格子 {i+1}", 
+                value=st.session_state.custom_tasks[i], 
+                key=f"edit_in_{i}",
+                label_visibility="collapsed" # 隱藏標籤讓畫面更乾淨
+            )
+else:
+    st.write("點擊格子紀錄成就，連成一線即可解鎖氣球慶祝！")
 
 # --- 5. 主畫面 UI ---
 st.title("🎯 2026 人生進化賓果")
