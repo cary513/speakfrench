@@ -139,12 +139,6 @@ with st.sidebar:
     remaining = target_date - today
     days_left = remaining.days
 
-    # 視覺化倒數顯示
-    st.markdown(f"""
-    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #FF4B4B; margin-bottom: 20px;">
-        <p style="margin: 0; font-size: 0.8rem; color: #555;">⏳ 距離 2027 新年冒險還有</p>
-        <h2 style="margin: 0; color: #FF4B4B;">{days_left} 天</h2>
-    </div>
     """, unsafe_allow_html=True)
 
     st.header("✍️ 編輯願望清單")
