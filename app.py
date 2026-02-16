@@ -4,71 +4,50 @@ import numpy as np
 # --- 1. 頁面配置與五色線框 CSS ---
 st.set_page_config(page_title="Solo Evolution Bingo", layout="centered")
 
-bingo_style = """
+st.markdown("""
 <style>
-    /* 基礎格子樣式 */
+    /* 1. 基礎設定：所有格子高度一致 */
     .stButton>button {
         width: 100%;
         height: 110px;
         background-color: white;
-        color: #333333;
         border-radius: 12px;
         font-weight: bold;
         transition: all 0.2s;
-        border: 3px solid #D3D3D3;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        white-space: normal;
-        word-wrap: break-word;
-        font-size: 14px;
+        border: 3px solid #D3D3D3; /* 預設灰色 */
     }
 
-    /* [核心] 第 13 格：紅色線框 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(13) button {
+    /* 2. [紅色 - 核心] 第 13 格 */
+    .stButton:nth-of-type(13) button {
         border: 3px solid #FF4B4B !important;
         background-color: #FFF5F5;
     }
 
-    /* [生活/旅遊] 橘色線框：1, 5, 6, 10, 11, 15, 16, 20, 21, 25 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(5) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(6) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(10) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(11) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(15) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(16) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(20) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(21) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(25) button {
+    /* 3. [橘色 - 生活旅遊] 左右兩行 (1, 6, 11, 16, 21 和 5, 10, 15, 20, 25) */
+    .stButton:nth-of-type(1) button, .stButton:nth-of-type(6) button, 
+    .stButton:nth-of-type(11) button, .stButton:nth-of-type(16) button, 
+    .stButton:nth-of-type(21) button, .stButton:nth-of-type(5) button, 
+    .stButton:nth-of-type(10) button, .stButton:nth-of-type(15) button, 
+    .stButton:nth-of-type(20) button, .stButton:nth-of-type(25) button {
         border: 3px solid #FFA500 !important;
     }
 
-    /* [職涯/目標] 藍色線框：2, 4, 7, 9, 17, 19, 22, 24 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(4) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(7) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(9) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(17) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(19) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(22) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(24) button {
-        border: 3px solid #1E90FF !important;
-    }
-
-    /* [健康/創作] 灰色線框：3, 8, 12, 14, 18, 23 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(3) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(8) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(12) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(14) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(18) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(23) button {
+    /* 4. [灰色 - 創作作品] 中間十字軸 (3, 8, 12, 14, 18, 23) */
+    .stButton:nth-of-type(3) button, .stButton:nth-of-type(8) button, 
+    .stButton:nth-of-type(12) button, .stButton:nth-of-type(14) button, 
+    .stButton:nth-of-type(18) button, .stButton:nth-of-type(23) button {
         border: 3px solid #D3D3D3 !important;
     }
-</style>
-"""
-st.markdown(bingo_style, unsafe_allow_html=True)
 
+    /* 5. [藍色 - 職涯目標] 其餘格子 (2, 4, 7, 9, 17, 19, 22, 24) */
+    .stButton:nth-of-type(2) button, .stButton:nth-of-type(4) button, 
+    .stButton:nth-of-type(7) button, .stButton:nth-of-type(9) button, 
+    .stButton:nth-of-type(17) button, .stButton:nth-of-type(19) button, 
+    .stButton:nth-of-type(22) button, .stButton:nth-of-type(24) button {
+        border: 3px solid #1E90FF !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 # --- 2. 初始化 Session State ---
 if 'board_state' not in st.session_state:
     st.session_state.board_state = np.zeros((5, 5), dtype=bool)
