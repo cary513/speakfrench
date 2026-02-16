@@ -1,69 +1,73 @@
 import streamlit as st
 import numpy as np
 
-# 1. 定義 CSS 樣式 (依據你的分類規範：紅、藍、橘、灰、綠)
-bingo_style = """
+st.markdown("""
 <style>
-    /* 基礎按鈕樣式 */
+    /* 1. 基礎格子樣式：統一所有格子的大小與基礎屬性 */
     .stButton>button {
         width: 100%;
-        height: 110px;
+        height: 110px; /* 確保高度統一 */
         background-color: white;
         color: #333333;
         border-radius: 12px;
         font-weight: bold;
-        transition: all 0.3s;
+        transition: all 0.2s;
+        border: 3px solid #D3D3D3; /* 預設線框粗度統一為 3px */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    /* [核心] 第 13 格：紅色線框 + 放大 */
+    /* 2. [核心]：第 13 格 (中心) - 僅更換紅色線框，不放大 */
+    div[data-testid="column"]:nth-child(13) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(13) button {
-        border: 4px solid #FF4B4B !important;
-        transform: scale(1.1);
-        box-shadow: 0px 0px 15px rgba(255, 75, 75, 0.3);
+        border: 3px solid #FF4B4B !important;
+        background-color: #FFF5F5; /* 輕微底色區分核心，但不改變大小 */
     }
 
-    /* [職涯/技能]：藍色線框 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(4) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(7) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(9) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(12) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(14) button {
-        border: 3px solid #1E90FF !important;
-    }
-
-    /* [生活/旅遊]：橘色線框 */
+    /* 3. [生活/旅遊]：橘色線框 (外圍與四角) */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(5) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(6) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(10) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(11) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(15) button {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(15) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(16) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(20) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(21) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(25) button {
         border: 3px solid #FFA500 !important;
     }
 
-    /* [健康/日常]：綠色線框 */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(21) button,
+    /* 4. [職涯/目標]：藍色線框 (對稱分佈) */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(4) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(7) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(9) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(17) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(19) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(22) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(23) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(24) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(25) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(20) button {
-        border: 3px solid #32CD32 !important;
+    div[data-testid="stHorizontalBlock"] > div:nth-child(24) button {
+        border: 3px solid #1E90FF !important;
     }
 
-    /* [創作/作品]：灰色線框 */
-    /* 預設已為灰色，此處加強顯示 */
+    /* 5. [健康/創作]：灰色線框 (中間十字軸) */
     div[data-testid="stHorizontalBlock"] > div:nth-child(3) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(8) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(16) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(17) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(12) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(14) button,
     div[data-testid="stHorizontalBlock"] > div:nth-child(18) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(19) button {
+    div[data-testid="stHorizontalBlock"] > div:nth-child(23) button {
         border: 3px solid #D3D3D3 !important;
     }
+
+    /* 狀態回饋：點擊後維持大小不變，僅改變背景色 */
+    .stButton>button:active, .stButton>button:focus {
+        background-color: #F8F9FB !important;
+        border-style: solid !important;
+    }
 </style>
-"""
+""", unsafe_allow_html=True)
 
 # 2. 注入 CSS
 st.markdown(bingo_style, unsafe_allow_html=True)
