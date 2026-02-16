@@ -3,58 +3,6 @@ import numpy as np
 import streamlit as st
 from datetime import datetime
 
-# --- 側邊欄：復古翻牌倒數計時器 ---
-with st.sidebar:
-    # 1. 計算剩餘天數
-    target_date = datetime(2027, 1, 1)
-    today = datetime.now()
-    remaining = target_date - today
-    days_left = f"{remaining.days:03}"  # 補零，確保三位數對齊
-
-    # 2. 注入翻牌感 CSS
-    st.markdown("""
-    <style>
-    .flip-container {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        background: #2D2D2D; /* 深色底座 */
-        padding: 20px 10px;
-        border-radius: 12px;
-        box-shadow: inset 0px 4px 10px rgba(0,0,0,0.5);
-        margin-bottom: 25px;
-    }
-    .flip-card {
-        background: #444; /* 牌面顏色 */
-        color: #FF4B4B; /* 數字顏色，對齊核心格 */
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 2.5rem;
-        font-weight: bold;
-        padding: 10px 15px;
-        border-radius: 6px;
-        position: relative;
-        /* 模擬翻牌中間的橫線 */
-        background-image: linear-gradient(to bottom, #444 48%, #222 50%, #444 52%);
-        border: 1px solid #111;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
-    }
-    .flip-label {
-        text-align: center;
-        color: #888;
-        font-size: 0.7rem;
-        margin-top: 8px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-    }
-    </style>
-    
-    <div class="flip-label">Countdown to 2027 New Year</div>
-    <div class="flip-container">
-        <div class="flip-card">""" + days_left[0] + """</div>
-        <div class="flip-card">""" + days_left[1] + """</div>
-        <div class="flip-card">""" + days_left[2] + """</div>
-    </div>
-    """, unsafe_allow_html=True)
 
     # ... 原有的編輯格子內容 ...
 
@@ -131,54 +79,6 @@ if 'last_lines_count' not in st.session_state:
 if 'custom_tasks' not in st.session_state:
     st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
 # --- 3. 側邊欄：復古翻牌倒數計時器 (已移除紅色標籤樣式) ---
-with st.sidebar:
-    # 1. 計算剩餘天數
-    target_date = datetime(2027, 1, 1)
-    today = datetime.now()
-    remaining = target_date - today
-    days_left = f"{remaining.days:03}"  # 補零，確保三位數對齊
-
-    # 2. 注入翻牌感 CSS (純淨版)
-    st.markdown("""
-    <style>
-    .flip-container {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        background: #1E1E1E; /* 更深邃的底座顏色 */
-        padding: 25px 10px;
-        border-radius: 12px;
-        box-shadow: 0px 10px 20px rgba(0,0,0,0.2); /* 改為外陰影讓它浮現 */
-        margin-bottom: 30px;
-    }
-    .flip-card {
-        background: #333; /* 牌面顏色 */
-        color: #FF4B4B; /* 核心紅色數字 */
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 2.8rem;
-        font-weight: bold;
-        padding: 5px 12px;
-        border-radius: 6px;
-        position: relative;
-        background-image: linear-gradient(to bottom, #333 49%, #111 50%, #333 51%);
-        border: 1px solid #000;
-    }
-    .flip-header {
-        text-align: center;
-        color: #666;
-        font-size: 0.8rem;
-        margin-bottom: 10px;
-        font-weight: bold;
-    }
-    </style>
-    
-    <div class="flip-header">⏳ 距離 2027 新年冒險還有</div>
-    <div class="flip-container">
-        <div class="flip-card">""" + days_left[0] + """</div>
-        <div class="flip-card">""" + days_left[1] + """</div>
-        <div class="flip-card">""" + days_left[2] + """</div>
-    </div>
-    """, unsafe_allow_html=True)
 
     st.header("✍️ 編輯願望清單")
     # ... 原有的 25 格輸入邏輯 ...
