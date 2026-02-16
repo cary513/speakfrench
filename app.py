@@ -130,8 +130,20 @@ if 'last_lines_count' not in st.session_state:
     st.session_state.last_lines_count = 0
 if 'custom_tasks' not in st.session_state:
     st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
+# --- 3. 側邊欄 ---
+with st.sidebar:
+    # --- 新增：新年倒數計時器 ---
+    target_date = datetime(2027, 1, 1)
+    today = datetime.now()
+    remaining = target_date - today
+    days_left = remaining.days
 
-
+    # 視覺化倒數顯示
+    st.markdown(f"""
+    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #FF4B4B; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 0.8rem; color: #555;">⏳ 距離 2027 新年冒險還有</p>
+        <h2 style="margin: 0; color: #FF4B4B;">{days_left} 天</h2>
+    </div>
     """, unsafe_allow_html=True)
 
     st.header("✍️ 編輯願望清單")
