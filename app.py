@@ -3,9 +3,9 @@ import numpy as np
 
 # --- 1. 頁面配置與五色線框 CSS ---
 st.set_page_config(page_title="Solo Evolution Bingo", layout="wide") # 改為寬版佈局更適合 Dashboard
-
 st.markdown("""
 <style>
+    /* 1. 基礎格子樣式 */
     .stButton>button {
         width: 100%;
         height: 110px;
@@ -14,9 +14,20 @@ st.markdown("""
         font-weight: bold;
         transition: all 0.2s;
         border: 3px solid #D3D3D3;
-        white-space: normal;
-        word-wrap: break-word;
+        color: #333333;
     }
+
+    /* 2. 當任務完成後 (Primary 狀態) 顯示紅色色塊 */
+    /* 我們使用 Streamlit 的 primary color 覆寫機制 */
+    div[data-testid="stButton"] > button[kind="primary"] {
+        background-color: #FF4B4B !important; /* 紅色背景 */
+        color: white !important;               /* 白色文字，確保易讀性 */
+        border: 3px solid #FF4B4B !important;
+    }
+
+    /* 3. 保持原有的五色線框邏輯 (未點燃時) */
+    /* ... (保留你之前的 div[data-testid="stButton"] > button[key="btn_x"] 顏色設定) ... */
+    
     /* 精確染色邏輯 */
     div[data-testid="stButton"] > button[key="btn_12"] { border: 3px solid #FF4B4B !important; background-color: #FFF5F5 !important; }
     div[data-testid="stButton"] > button[key="btn_0"], div[data-testid="stButton"] > button[key="btn_5"],
