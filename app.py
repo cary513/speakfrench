@@ -29,10 +29,10 @@ st.markdown("""
 
     /* 3. 分類線框邏輯 (僅在 Secondary/未完成狀態下顯示) */
     
-    /* [核心]：13格 (紅色線框) */
+    /* [核心]：13格 (Key: btn_12) - 紅色線框 */
     div[data-testid="stButton"] > button[key="btn_12"][kind="secondary"] { border: 3px solid #FF4B4B !important; }
 
-    /* [職涯/技能]：2, 4, 7, 9, 12, 14 格 (藍色線框) */
+    /* [職涯/技能]：2, 4, 7, 9, 12, 14 格 (Key: btn_1, 3, 6, 8, 11, 13) - 藍色線框 */
     div[data-testid="stButton"] > button[key="btn_1"][kind="secondary"], 
     div[data-testid="stButton"] > button[key="btn_3"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_6"][kind="secondary"],
@@ -40,7 +40,7 @@ st.markdown("""
     div[data-testid="stButton"] > button[key="btn_11"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_13"][kind="secondary"] { border: 3px solid #1E90FF !important; }
 
-    /* [生活/旅遊]：1, 5, 6, 10, 11, 15 格 (橘色線框) */
+    /* [生活/旅遊]：1, 5, 6, 10, 11, 15 格 (Key: btn_0, 4, 5, 9, 10, 14) - 橘色線框 */
     div[data-testid="stButton"] > button[key="btn_0"][kind="secondary"], 
     div[data-testid="stButton"] > button[key="btn_4"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_5"][kind="secondary"],
@@ -48,7 +48,7 @@ st.markdown("""
     div[data-testid="stButton"] > button[key="btn_10"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_14"][kind="secondary"] { border: 3px solid #FFA500 !important; }
 
-    /* [創作/作品]：3, 8, 16, 17, 18, 19 格 (灰色線框) */
+    /* [創作/作品]：3, 8, 16, 17, 18, 19 格 (Key: btn_2, 7, 15, 16, 17, 18) - 灰色線框 */
     div[data-testid="stButton"] > button[key="btn_2"][kind="secondary"], 
     div[data-testid="stButton"] > button[key="btn_7"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_15"][kind="secondary"],
@@ -56,7 +56,7 @@ st.markdown("""
     div[data-testid="stButton"] > button[key="btn_17"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_18"][kind="secondary"] { border: 3px solid #D3D3D3 !important; }
 
-    /* [健康/日常]：20, 21, 22, 23, 24, 25 格 (綠色線框) */
+    /* [健康/日常]：20, 21, 22, 23, 24, 25 格 (Key: btn_19, 20, 21, 22, 23, 24) - 綠色線框 */
     div[data-testid="stButton"] > button[key="btn_19"][kind="secondary"], 
     div[data-testid="stButton"] > button[key="btn_20"][kind="secondary"],
     div[data-testid="stButton"] > button[key="btn_21"][kind="secondary"],
