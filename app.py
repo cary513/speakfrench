@@ -5,7 +5,7 @@ import numpy as np
 st.set_page_config(page_title="Solo Evolution Bingo", layout="wide") # 改為寬版佈局更適合 Dashboard
 st.markdown("""
 <style>
-    /* 1. 基礎格子樣式 */
+    /* 1. 基礎格子樣式 (未完成狀態) */
     .stButton>button {
         width: 100%;
         height: 110px;
@@ -15,33 +15,54 @@ st.markdown("""
         transition: all 0.2s;
         border: 3px solid #D3D3D3;
         color: #333333;
+        white-space: normal;
+        word-wrap: break-word;
     }
 
-    /* 2. 當任務完成後 (Primary 狀態) 顯示紅色色塊 */
-    /* 我們使用 Streamlit 的 primary color 覆寫機制 */
+    /* 2. 達成任務後的狀態：變為紅色色塊 (Primary 狀態) */
     div[data-testid="stButton"] > button[kind="primary"] {
-        background-color: #FF4B4B !important; /* 紅色背景 */
-        color: white !important;               /* 白色文字，確保易讀性 */
+        background-color: #FF4B4B !important;
+        color: white !important;
         border: 3px solid #FF4B4B !important;
+        box-shadow: 0px 4px 10px rgba(255, 75, 75, 0.3);
     }
 
-    /* 3. 保持原有的五色線框邏輯 (未點燃時) */
-    /* ... (保留你之前的 div[data-testid="stButton"] > button[key="btn_x"] 顏色設定) ... */
+    /* 3. 分類線框邏輯 (僅在 Secondary/未完成狀態下顯示) */
     
-    /* 精確染色邏輯 */
-    div[data-testid="stButton"] > button[key="btn_12"] { border: 3px solid #FF4B4B !important; background-color: #FFF5F5 !important; }
-    div[data-testid="stButton"] > button[key="btn_0"], div[data-testid="stButton"] > button[key="btn_5"],
-    div[data-testid="stButton"] > button[key="btn_10"], div[data-testid="stButton"] > button[key="btn_15"],
-    div[data-testid="stButton"] > button[key="btn_20"], div[data-testid="stButton"] > button[key="btn_4"],
-    div[data-testid="stButton"] > button[key="btn_9"], div[data-testid="stButton"] > button[key="btn_14"],
-    div[data-testid="stButton"] > button[key="btn_19"], div[data-testid="stButton"] > button[key="btn_24"] { border: 3px solid #FFA500 !important; }
-    div[data-testid="stButton"] > button[key="btn_1"], div[data-testid="stButton"] > button[key="btn_3"],
-    div[data-testid="stButton"] > button[key="btn_6"], div[data-testid="stButton"] > button[key="btn_8"],
-    div[data-testid="stButton"] > button[key="btn_16"], div[data-testid="stButton"] > button[key="btn_18"],
-    div[data-testid="stButton"] > button[key="btn_21"], div[data-testid="stButton"] > button[key="btn_23"] { border: 3px solid #1E90FF !important; }
-    div[data-testid="stButton"] > button[key="btn_2"], div[data-testid="stButton"] > button[key="btn_7"],
-    div[data-testid="stButton"] > button[key="btn_11"], div[data-testid="stButton"] > button[key="btn_13"],
-    div[data-testid="stButton"] > button[key="btn_17"], div[data-testid="stButton"] > button[key="btn_22"] { border: 3px solid #D3D3D3 !important; }
+    /* [核心]：13格 (紅色線框) */
+    div[data-testid="stButton"] > button[key="btn_12"][kind="secondary"] { border: 3px solid #FF4B4B !important; }
+
+    /* [職涯/技能]：2, 4, 7, 9, 12, 14 格 (藍色線框) */
+    div[data-testid="stButton"] > button[key="btn_1"][kind="secondary"], 
+    div[data-testid="stButton"] > button[key="btn_3"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_6"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_8"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_11"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_13"][kind="secondary"] { border: 3px solid #1E90FF !important; }
+
+    /* [生活/旅遊]：1, 5, 6, 10, 11, 15 格 (橘色線框) */
+    div[data-testid="stButton"] > button[key="btn_0"][kind="secondary"], 
+    div[data-testid="stButton"] > button[key="btn_4"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_5"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_9"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_10"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_14"][kind="secondary"] { border: 3px solid #FFA500 !important; }
+
+    /* [創作/作品]：3, 8, 16, 17, 18, 19 格 (灰色線框) */
+    div[data-testid="stButton"] > button[key="btn_2"][kind="secondary"], 
+    div[data-testid="stButton"] > button[key="btn_7"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_15"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_16"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_17"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_18"][kind="secondary"] { border: 3px solid #D3D3D3 !important; }
+
+    /* [健康/日常]：20, 21, 22, 23, 24, 25 格 (綠色線框) */
+    div[data-testid="stButton"] > button[key="btn_19"][kind="secondary"], 
+    div[data-testid="stButton"] > button[key="btn_20"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_21"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_22"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_23"][kind="secondary"],
+    div[data-testid="stButton"] > button[key="btn_24"][kind="secondary"] { border: 3px solid #32CD32 !important; }
 </style>
 """, unsafe_allow_html=True)
 
