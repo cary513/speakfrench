@@ -131,13 +131,6 @@ if 'last_lines_count' not in st.session_state:
 if 'custom_tasks' not in st.session_state:
     st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
 
-# --- 3. 側邊欄：25 個輸入框與功能按鈕 ---
-with st.sidebar:
-    # --- 新增：新年倒數計時器 ---
-    target_date = datetime(2027, 1, 1)
-    today = datetime.now()
-    remaining = target_date - today
-    days_left = remaining.days
 
     """, unsafe_allow_html=True)
 
