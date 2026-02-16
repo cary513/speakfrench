@@ -132,7 +132,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    st.header("✍️ 編輯願望清單")
     # ... 原有的 25 格輸入邏輯 ...
 with st.sidebar:
     st.header("✍️ 編輯願望清單")
