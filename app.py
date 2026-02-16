@@ -2,8 +2,6 @@ import streamlit as st
 import numpy as np
 
 # --- 1. 頁面配置與五色線框 CSS ---
-st.set_page_config(page_title="Solo Evolution Bingo", layout="centered")
-
 st.markdown("""
 <style>
     /* 1. 基礎設定：所有格子高度一致 */
