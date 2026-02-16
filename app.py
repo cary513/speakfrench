@@ -1,6 +1,92 @@
 import streamlit as st
 import numpy as np
 
+# 1. 頁面設定與標題
+st.set_page_config(page_title="Custom Bingo Creator", layout="centered")
+st.title("🎯 自訂人生賓果產生器")
+st.write("輸入你的 25 個挑戰目標，打造專屬的進化地圖！")
+
+# 2. 初始化狀態
+if 'board_state' not in st.session_state:
+    st.session_state.board_state = np.zeros((5, 5), dtype=bool)
+if 'last_lines_count' not in st.session_state:
+    st.session_state.last_lines_count = 0
+if 'custom_tasks' not in st.session_state:
+    # 預設內容 (方便測試)
+    st.session_state.custom_tasks = [f"任務 {i+1}" for i in range(25)]
+if 'edit_mode' not in st.session_state:
+    st.session_state.edit_mode = True
+
+# 3. 側邊欄：自訂內容輸入區
+with st.sidebar:
+    st.header("⚙️ 設定你的賓果格")
+    if st.button("切換 編輯 / 挑戰 模式"):
+        st.session_state.edit_mode = not st.session_state.edit_mode
+    
+    st.divider()
+    if st.session_state.edit_mode:
+        st.subheader("編輯 25 格內容")
+        for i in range(25):
+            st.session_state.custom_tasks[i] = st.text_input(
+                f"格子 {i+1}", 
+                value=st.session_state.custom_tasks[i], 
+                key=f"input_{i}"
+            )
+    else:
+        st.success("編輯模式已關閉，現在可以開始挑戰！")
+        if st.button("重置所有進度"):
+            st.session_state.board_state = np.zeros((5, 5), dtype=bool)
+            st.session_state.last_lines_count = 0
+            st.rerun()
+
+# 4. 連線判定函式
+def check_bingo(state):
+    rows = np.all(state, axis=1).sum()
+    cols = np.all(state, axis=0).sum()
+    diag1 = np.all(np.diag(state))
+    diag2 = np.all(np.diag(np.fliplr(state)))
+    return int(rows + cols + diag1 + diag2)
+
+# 5. UI 渲染
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; height: 90px; border-radius: 12px; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 顯示賓果盤
+cols = st.columns(5)
+for i in range(25):
+    row, col = divmod(i, 5)
+    with cols[col]:
+        task_text = st.session_state.custom_tasks[i]
+        is_checked = st.session_state.board_state[row, col]
+        
+        if st.button(
+            f"{'✅' if is_checked else ''}\n{task_text}", 
+            key=f"btn_{i}", 
+            type="primary" if is_checked else "secondary",
+            disabled=st.session_state.edit_mode # 編輯模式下不能點選挑戰
+        ):
+            st.session_state.board_state[row, col] = not st.session_state.board_state[row, col]
+            st.rerun()
+
+# 6. 成就回饋邏輯
+current_lines = check_bingo(st.session_state.board_state)
+
+if not st.session_state.edit_mode:
+    st.divider()
+    st.subheader(f"目前連線數：{current_lines}")
+    
+    if current_lines > 0 and current_lines > st.session_state.last_lines_count:
+        st.balloons()
+        st.success(f"🎉 賀！達成新連線！目前總計：{current_lines}")
+        st.session_state.last_lines_count = current_lines
+    elif current_lines < st.session_state.last_lines_count:
+        st.session_state.last_lines_count = current_lines
+import streamlit as st
+import numpy as np
+
 # 1. 產品內容定義 (24格 + 1格核心)
 tasks = [
     "Python 自動化腳本", "MJ UI 風格指南", "數據驅動調研", "首筆歐元/美金收入", "遠端工作 4hr+",
