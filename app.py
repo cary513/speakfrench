@@ -64,28 +64,25 @@ for i in range(25):
         if st.button(label, key=f"btn_{i}", type=button_type):
             st.session_state.board_state[row, col] = not st.session_state.board_state[row, col]
             st.rerun()
-# 7. 成就回饋 (精確控制慶祝時機)
+# 7. 成就回饋 (嚴格判定：有連線才給回饋)
 st.divider()
-st.subheader(f"目前連線數：{lines_completed}")
 
-# 邏輯判斷：
-# 1. 如果連線數正好等於 2 
-# 2. 且 之前還沒有針對「兩條線」慶祝過
+# 取得目前的連線總數 (透過我們先前的 check_bingo 函式)
+lines_completed = check_bingo(st.session_state.board_state)
+
 if lines_completed > 0:
+    # 觸發回饋
     st.balloons()
-    st.success(f"太棒了！你已經解鎖了 {lines_completed} 條職涯連線！")
-elif lines_completed == 2 and not st.session_state.celebrated_two_lines:
-    st.balloons()
-    st.success("🎊 達成第二條連線！進化速度加快，繼續保持！")
-    # 將旗標設為 True，這樣下次點擊時，即使還是兩條線，也不會再放氣球
-    st.session_state.celebrated_two_lines = True
-
-# 如果使用者取消勾選，導致連線數掉回 1，我們可以重置旗標，讓他們下次達成 2 時能再看一次氣球
-elif lines_completed < 2:
-    st.session_state.celebrated_two_lines = False
-    if lines_completed == 1:
-        st.info("第一條線達成了！加油，第二條線會有慶祝驚喜！🚀")
-
-elif lines_completed > 2:
-    st.write(f"目前穩定連線中：{lines_completed} 條")
-
+    st.success(f"🎊 恭喜！你已達成 {lines_completed} 條職涯連線！")
+    
+    # PM 加碼：如果是全盤達成 (12 條連線)
+    if lines_completed >= 12: 
+        st.snow()
+        st.info("🔥 傳說級成就：你已經完成了全盤進化！")
+else:
+    # 完全沒有連線時的狀態
+    st.write("🏃 目前進度：努力連成第一條線中...")
+    # 計算進度百分比，給使用者一點心理動力
+    progress = st.session_state.board_state.sum() / 25
+    st.progress(progress)
+    st.caption(f"目前已解鎖 {st.session_state.board_state.sum()} / 25 個任務")
