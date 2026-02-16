@@ -70,7 +70,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. 注入 CSS
-st.markdown(bingo_style, unsafe_allow_html=True)
 
 # 1. 頁面設定與標題
 st.set_page_config(page_title="Custom Bingo Creator", layout="centered")
