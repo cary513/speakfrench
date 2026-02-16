@@ -56,32 +56,26 @@ with st.sidebar:
         )
     
     st.divider()
-    st.header("⚙️ 功能設定")
+    st.header("⚙️ 系統操作")
     
-    # 功能按鈕 1：帶入範本 (確保文字同步更新)
-    if st.button("✨ 帶入預設範本", use_container_width=True):
-        # 1. 定義範本內容
-        template_content = [
-            "讀完10本小說", "嘗試3種風格", "整理法文同人", "畫3款週邊", "50張人體速寫",
-            "捷運探索旅遊", "ibanny cafe", "6月看演唱會", "每月月曆圖", "記住長相",
-            "學習新技能", "減重5kg", "核心價值", "整理電子書", "看3個展覽",
-            "去沒去過的地方", "完成2本畫本", "5個繪圖委託", "每週深蹲50次", "練習少說粗口",
-            "獨自旅遊1次", "看2場電影", "紀錄喜歡店家", "學5道料理", "看完3部動畫"
-        ]
-        
-        # 2. 同步更新 custom_tasks 以及 側邊欄 input 的 key
+    # 建立兩欄按鈕，讓佈局更對稱
+    op_col1, op_col2 = st.columns(2)
+    
+    # 功能按鈕 1：設定 (確認並套用內容)
+    if op_col1.button("✅ 設定內容", use_container_width=True):
+        # 確保 custom_tasks 陣列與當前輸入框同步
         for i in range(25):
-            st.session_state.custom_tasks[i] = template_content[i]
-            # 強制更新 text_input 綁定的 key 狀態
-            st.session_state[f"sidebar_in_{i}"] = template_content[i]
-            
+            st.session_state.custom_tasks[i] = st.session_state[f"sidebar_in_{i}"]
+        
+        st.toast("✅ 內容已設定完成！")
         st.rerun()
         
-    # 功能按鈕 2：重置 (僅重置勾選狀態)
-    if st.button("🗑️ 重置進度 (保留文字)", use_container_width=True):
+    # 功能按鈕 2：重置進度
+    if op_col2.button("🗑️ 重置進度", use_container_width=True):
         st.session_state.board_state = np.zeros((5, 5), dtype=bool)
         st.session_state.last_lines_count = 0
-        st.rerun()    
+        st.toast("🗑️ 勾選進度已清空")
+        st.rerun()
 
 # --- 4. 邏輯函式 ---
 def check_bingo(state):
