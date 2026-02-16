@@ -72,7 +72,7 @@ if 'board_state' not in st.session_state:
 if 'last_lines_count' not in st.session_state:
     st.session_state.last_lines_count = 0
 if 'custom_tasks' not in st.session_state:
-    st.session_state.custom_tasks = ["任務 " + str(i+1) for i in range(25)]
+    st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
 
 # --- 3. 側邊欄：25 個輸入框與功能按鈕 ---
 with st.sidebar:
