@@ -45,7 +45,7 @@ def load_data():
 
 def save_data():
     import pandas as pd
-    # 1. 準備資料
+    # 準備 25 格資料
     data = {
         "index": list(range(25)),
         "task": st.session_state.custom_tasks,
@@ -53,18 +53,18 @@ def save_data():
     }
     df = pd.DataFrame(data)
     
-    # 2. 使用更穩定的方式寫入
-    # 如果 conn.update 報錯，我們改用這個語法嘗試
+    # 替換成你那份 Solo_Evolution_Bingo 的完整網址
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1Xl2...你的ID.../edit"
+    
     try:
-        # 指定試算表名稱與工作表名稱
         conn.update(
-            spreadsheet="https://docs.google.com/spreadsheets/d/你的試算表ID", # 建議加上網址或ID更精確
-            worksheet="Solo_Evolution_Bingo", 
+            spreadsheet=spreadsheet_url,
+            worksheet="Solo_Evolution_Bingo",
             data=df
         )
+        st.toast("✅ 雲端同步成功！")
     except Exception as e:
-        # 備援方案：如果上方還是失敗，請確認你的試算表網址正確
-        st.error(f"同步失敗，請確認試算表 ID 是否正確。")
+        st.error(f"同步失敗：{e}")
         
 # --- 4. 初始化 Session State ---
 if 'custom_tasks' not in st.session_state:
