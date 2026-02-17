@@ -116,7 +116,7 @@ st.markdown(f"""
 
 st.divider()
 
-# --- 5. 核心邏輯函式 ---
+# --- 5. 核心邏輯函式 (置於渲染前) ---
 def check_bingo(state):
     rows = np.all(state, axis=1).sum()
     cols = np.all(state, axis=0).sum()
@@ -124,21 +124,17 @@ def check_bingo(state):
     diag2 = np.all(np.diag(np.fliplr(state)))
     return int(rows + cols + diag1 + diag2)
 
-# --- 6. 5x5 矩陣渲染 (原位編輯與挑戰) ---
+# --- 6. 5x5 矩陣渲染 ---
 cols = st.columns(5)
 for i in range(25):
     row, col = divmod(i, 5)
     with cols[col]:
         if st.session_state.is_editing:
-            # 編輯模式：直接輸入文字
             st.session_state.custom_tasks[i] = st.text_input(
-                f"G{i+1}", 
-                value=st.session_state.custom_tasks[i], 
-                key=f"edit_{i}", 
-                label_visibility="collapsed"
+                f"G{i}", value=st.session_state.custom_tasks[i], 
+                key=f"edit_{i}", label_visibility="collapsed"
             )
         else:
-            # 挑戰模式：顯示賓果按鈕
             is_checked = st.session_state.board_state[row, col]
             task_text = st.session_state.custom_tasks[i]
             if st.button(
@@ -146,29 +142,28 @@ for i in range(25):
                 key=f"btn_{i}",
                 type="primary" if is_checked else "secondary"
             ):
+                # 1. 更新狀態
                 st.session_state.board_state[row, col] = not st.session_state.board_state[row, col]
+                
+                # 2. 立即判定連線狀況
+                new_lines = check_bingo(st.session_state.board_state)
+                
+                # 3. 如果連線數增加，先存進 Session State 再 Rerun
+                if new_lines > st.session_state.last_lines_count:
+                    st.session_state.should_celebrate = True # 新增一個慶祝標記
+                
+                st.session_state.last_lines_count = new_lines
                 st.rerun()
 
-# --- 7. 底部控制區：鎖定目標與修改 ---
-st.divider()
-ctrl_col1, ctrl_col2 = st.columns(2)
-
-if st.session_state.is_editing:
-    if ctrl_col1.button("🎯 鎖定目標", use_container_width=True):
-        st.session_state.is_editing = False
-        st.toast("目標已鎖定，開始你的進化挑戰！")
-        st.rerun()
-else:
-    if ctrl_col1.button("✍️ 修改內容", use_container_width=True):
-        st.session_state.is_editing = True
-        st.rerun()
-
-if ctrl_col2.button("🗑️ 重置進度", use_container_width=True):
-    st.session_state.board_state = np.zeros((5, 5), dtype=bool)
-    st.rerun()
-
-# 成就回饋
+# --- 7. 成就回饋與氣球觸發 ---
 if not st.session_state.is_editing:
-    lines = check_bingo(st.session_state.board_state)
-    if lines > 0:
-        st.success(f"🎊 精彩！目前已達成 {lines} 條連線！")
+    current_lines = st.session_state.last_lines_count
+    
+    # 檢查是否需要慶祝
+    if st.session_state.get('should_celebrate', False):
+        st.balloons()
+        st.toast(f"🎊 太強了！達成第 {current_lines} 條連線！")
+        st.session_state.should_celebrate = False # 噴完後關閉標記
+    
+    if current_lines > 0:
+        st.success(f"🔥 目前已達成 {current_lines} 條連線！")
