@@ -43,9 +43,13 @@ def load_data():
         # 初始資料結構
         return None
 
+# --- 修正版：Google Sheets 存取邏輯 ---
+# 請確認你的 Google Sheets 左下角分頁名稱是否為 "Solo_Evolution_Bingo"
+# 如果不是，請手動將分頁改名，或將下方 worksheet 參數改為 "工作表1"
+
 def save_data():
     import pandas as pd
-    # 1. 整理 25 格的最新數據
+    # 1. 準備 25 格資料
     data = {
         "index": list(range(25)),
         "task": st.session_state.custom_tasks,
@@ -53,19 +57,28 @@ def save_data():
     }
     df = pd.DataFrame(data)
     
-    # 2. 【核心修正】填入你這份 Solo_Evolution_Bingo 的完整 URL
-    target_url = "https://docs.google.com/spreadsheets/d/1PooXszmX4xtEAQoTgCQTdGmLgT373TzLKh7RVM6xO5w/edit"
+    # 2. 使用你的專屬試算表 ID
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit"
     
     try:
-        # 強制寫入對應的工作表
         conn.update(
-            spreadsheet=target_url,
-            worksheet="Solo_Evolution_Bingo", 
+            spreadsheet=spreadsheet_url,
+            worksheet="Solo_Evolution_Bingo", # 這裡要跟 Excel 分頁名稱完全一樣
             data=df
         )
-        st.toast("✅ 雲端進化同步成功！")
+        st.toast("✅ 進化進度已同步至雲端！")
     except Exception as e:
-        st.error(f"⚠️ 同步失敗：{e}")
+        # PM 備註：如果噴錯，通常是分頁名稱(Worksheet)對不上
+        st.error(f"同步失敗：{e}")
+
+def load_data():
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit"
+    try:
+        # ttl="0s" 確保每次重新整理都抓最新資料，不使用快取
+        df = conn.read(spreadsheet=spreadsheet_url, worksheet="Solo_Evolution_Bingo", ttl="0s")
+        return df
+    except:
+        return None
         
 # --- 4. 初始化 Session State ---
 if 'custom_tasks' not in st.session_state:
