@@ -1,19 +1,20 @@
 import streamlit as st
 import numpy as np
 from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
 
 # --- 1. 頁面配置 ---
-st.set_page_config(page_title="2026 Evolution", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Solo Evolution 2026", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 注入 CSS (高大於寬、分類線框、紅色塊) ---
+# --- 2. 注入 CSS (維持你要求的高窄長方形與五色規範) ---
 st.markdown("""
 <style>
     [data-testid="collapsedControl"] { display: none; }
-    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .flip-clock { display: flex; gap: 4px; background: #1E1E1E; padding: 10px; border-radius: 10px; }
+    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .flip-clock { display: flex; gap: 4px; background: #222; padding: 8px; border-radius: 8px; }
     .flip-digit {
         background: #333; color: #FF4B4B; font-family: monospace;
-        font-size: 1.3rem; font-weight: bold; padding: 3px 8px;
+        font-size: 1.3rem; font-weight: bold; padding: 2px 8px;
         border-radius: 4px; border: 1px solid #000;
         background-image: linear-gradient(to bottom, #333 49%, #111 50%, #333 51%);
     }
@@ -26,29 +27,53 @@ st.markdown("""
     div[data-testid="stButton"] > button[kind="primary"] {
         background-color: #FF4B4B !important; color: white !important; border: none !important;
     }
-    /* 這裡保留你之前的五色線框 CSS ... */
+    /* 此處省略之前定義的五色線框 CSS 邏輯，請保留在你的程式碼中 */
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 核心初始化 (解決 AttributeError 的關鍵) ---
-# 確保所有 key 在一開始就存在於 session_state 中
-if 'custom_tasks' not in st.session_state:
-    st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
-if 'board_state' not in st.session_state:
-    st.session_state.board_state = np.zeros((5, 5), dtype=bool)
-if 'is_editing' not in st.session_state:
-    st.session_state.is_editing = True
-if 'last_lines_count' not in st.session_state: # 修正此處
-    st.session_state.last_lines_count = 0
-if 'should_celebrate' not in st.session_state:
-    st.session_state.should_celebrate = False
+# --- 3. Google Sheets 連線與資料同步 ---
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- 4. 頂部 Header ---
+def load_data():
+    # 讀取試算表，若不存在則初始化
+    try:
+        df = conn.read(worksheet="Solo_Evolution_Bingo", ttl="0s")
+        return df
+    except:
+        # 初始資料結構
+        return None
+
+def save_data():
+    # 將目前的 session_state 轉成 DataFrame 並存回雲端
+    import pandas as pd
+    data = {
+        "index": list(range(25)),
+        "task": st.session_state.custom_tasks,
+        "status": st.session_state.board_state.flatten().tolist()
+    }
+    df = pd.DataFrame(data)
+    conn.update(worksheet="Solo_Evolution_Bingo", data=df)
+
+# --- 4. 初始化 Session State ---
+if 'custom_tasks' not in st.session_state:
+    cloud_df = load_data()
+    if cloud_df is not None and not cloud_df.empty:
+        st.session_state.custom_tasks = cloud_df['task'].tolist()
+        st.session_state.board_state = np.array(cloud_df['status']).reshape(5, 5)
+    else:
+        st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
+        st.session_state.board_state = np.zeros((5, 5), dtype=bool)
+
+if 'is_editing' not in st.session_state: st.session_state.is_editing = True
+if 'last_lines_count' not in st.session_state: st.session_state.last_lines_count = 0
+if 'should_celebrate' not in st.session_state: st.session_state.should_celebrate = False
+
+# --- 5. 頂部 Header 與 倒數計時 ---
 t_date = datetime(2027, 1, 1)
 days_left = f"{(t_date - datetime.now()).days:03}"
 st.markdown(f"""
 <div class="header-box">
-    <h2 style="margin:0; font-size: 1.5rem;">🎯 人生導航 BINGO盤 </h2>
+    <h2 style="margin:0; font-size: 1.6rem;">🎯 進化原力導航盤</h2>
     <div class="flip-clock">
         <div class="flip-digit">{days_left[0]}</div>
         <div class="flip-digit">{days_left[1]}</div>
@@ -58,7 +83,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 st.divider()
 
-# --- 5. 邏輯函式 ---
+# --- 6. 核心連線判定邏輯 ---
 def check_bingo(state):
     rows = np.all(state, axis=1).sum()
     cols = np.all(state, axis=0).sum()
@@ -66,7 +91,7 @@ def check_bingo(state):
     diag2 = np.all(np.diag(np.fliplr(state)))
     return int(rows + cols + diag1 + diag2)
 
-# --- 6. 渲染賓果盤 ---
+# --- 7. 5x5 矩陣渲染 ---
 cols = st.columns(5)
 for i in range(25):
     row, col = divmod(i, 5)
@@ -76,37 +101,38 @@ for i in range(25):
         else:
             is_checked = st.session_state.board_state[row, col]
             if st.button(f"{'✅' if is_checked else ''}\n{st.session_state.custom_tasks[i]}", key=f"btn_{i}", type="primary" if is_checked else "secondary"):
-                st.session_state.board_state[row, col] = not st.session_state.board_state[row, col]
+                st.session_state.board_state[row, col] = not is_checked
                 
-                # 判定氣球噴發
+                # 判定連線與寫回雲端
                 new_lines = check_bingo(st.session_state.board_state)
                 if new_lines > st.session_state.last_lines_count:
                     st.session_state.should_celebrate = True
                 st.session_state.last_lines_count = new_lines
+                save_data() # 即時同步
                 st.rerun()
 
-# --- 7. 成就與氣球觸發 ---
+# --- 8. 氣球與底部控制 ---
 if not st.session_state.is_editing:
     if st.session_state.should_celebrate:
         st.balloons()
-        st.session_state.should_celebrate = False # 噴完重置
-    
-    current_lines = st.session_state.last_lines_count # 現在這裡絕對有值了
-    if current_lines > 0:
-        st.success(f"🎊 精彩！達成 {current_lines} 條連線！")
+        st.session_state.should_celebrate = False
+    if st.session_state.last_lines_count > 0:
+        st.success(f"🎊 精彩！達成 {st.session_state.last_lines_count} 條連線！")
 
-# --- 8. 底部控制 ---
 st.divider()
 c1, c2 = st.columns(2)
 if st.session_state.is_editing:
-    if c1.button("🎯 鎖定目標", use_container_width=True):
+    if c1.button("🎯 鎖定並同步雲端", use_container_width=True):
+        save_data()
         st.session_state.is_editing = False
         st.rerun()
 else:
     if c1.button("✍️ 修改內容", use_container_width=True):
         st.session_state.is_editing = True
         st.rerun()
+
 if c2.button("🗑️ 重置進度", use_container_width=True):
     st.session_state.board_state = np.zeros((5, 5), dtype=bool)
     st.session_state.last_lines_count = 0
+    save_data()
     st.rerun()
