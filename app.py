@@ -44,16 +44,28 @@ def load_data():
         return None
 
 def save_data():
-    # 將目前的 session_state 轉成 DataFrame 並存回雲端
     import pandas as pd
+    # 1. 準備資料
     data = {
         "index": list(range(25)),
         "task": st.session_state.custom_tasks,
         "status": st.session_state.board_state.flatten().tolist()
     }
     df = pd.DataFrame(data)
-    conn.update(worksheet="Solo_Evolution_Bingo", data=df)
-
+    
+    # 2. 使用更穩定的方式寫入
+    # 如果 conn.update 報錯，我們改用這個語法嘗試
+    try:
+        # 指定試算表名稱與工作表名稱
+        conn.update(
+            spreadsheet="https://docs.google.com/spreadsheets/d/你的試算表ID", # 建議加上網址或ID更精確
+            worksheet="Solo_Evolution_Bingo", 
+            data=df
+        )
+    except Exception as e:
+        # 備援方案：如果上方還是失敗，請確認你的試算表網址正確
+        st.error(f"同步失敗，請確認試算表 ID 是否正確。")
+        
 # --- 4. 初始化 Session State ---
 if 'custom_tasks' not in st.session_state:
     cloud_df = load_data()
