@@ -48,7 +48,7 @@ t_date = datetime(2027, 1, 1)
 days_left = f"{(t_date - datetime.now()).days:03}"
 st.markdown(f"""
 <div class="header-box">
-    <h2 style="margin:0; font-size: 1.5rem;">🎯 2026 進化賓果</h2>
+    <h2 style="margin:0; font-size: 1.5rem;">🎯 人生導航 BINGO盤 </h2>
     <div class="flip-clock">
         <div class="flip-digit">{days_left[0]}</div>
         <div class="flip-digit">{days_left[1]}</div>
