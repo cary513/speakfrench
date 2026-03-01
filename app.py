@@ -16,6 +16,10 @@ def load_nlp():
 nlp = load_nlp()
 
 # ... (其餘程式碼保持不變)
+import time
+start = time.time()
+# 執行 NLP 或圖譜渲染
+print(f"耗時: {time.time() - start} 秒")
 # 設定頁面配置
 st.set_page_config(page_title="VocaGraph Prototype", layout="wide")
 
