@@ -162,3 +162,12 @@ if c2.button("🗑️ 重置進度", use_container_width=True):
     st.session_state.last_lines_count = 0
     save_data()
     st.rerun()
+# 測試讀取功能
+def test_load():
+    try:
+        # 如果這一行執行成功，代表你的 JSON 金鑰與權限設定是 100% 正確的
+        data = conn.read(spreadsheet="https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit", worksheet="Solo_Evolution_Bingo")
+        st.write("✅ 讀取成功！")
+        st.write(data)
+    except Exception as e:
+        st.write(f"❌ 讀取失敗，原因：{e}")
