@@ -1,9 +1,16 @@
 import streamlit as st
-import spacy
 import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
+import spacy
 
+# 因為我們已經在 requirements.txt 中強制安裝了模型，
+# 這裡只需要直接載入即可，不需要再寫下載邏輯
+@st.cache_resource
+def load_nlp():
+    return spacy.load("fr_core_news_md")
+
+nlp = load_nlp()
 # 設定頁面配置
 st.set_page_config(page_title="VocaGraph Prototype", layout="wide")
 
