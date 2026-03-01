@@ -97,4 +97,15 @@ with col2:
             st.success("💡 偵測到道地口語 (Argot): 'bosser' -> 意同 'travailler'")
 
 st.divider()
+@st.cache_data
+def get_graph_html(word):
+    # 這裡只處理圖譜生成的運算，不涉及 UI 渲染
+    # ... (放置你的 NetworkX 建立邏輯)
+    return html_data 
+
+# 在 UI 顯示部分：
+if target_word:
+    with st.spinner("正在為您架構語義星系..."): # 加入轉圈動畫
+        html_data = get_graph_html(target_word)
+        components.html(html_data, height=550)
 st.caption("Solo Evolution - 法語學習開發原型 v1.0")
