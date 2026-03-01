@@ -1,173 +1,84 @@
 import streamlit as st
-import numpy as np
-from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
+import spacy
+import networkx as nx
+from pyvis.network import Network
+import streamlit.components.v1 as components
 
-# --- 1. 頁面配置 ---
-st.set_page_config(page_title="Solo Evolution 2026", layout="centered", initial_sidebar_state="collapsed")
+# 設定頁面配置
+st.set_page_config(page_title="VocaGraph Prototype", layout="wide")
 
-# --- 2. 注入 CSS (維持你要求的高窄長方形與五色規範) ---
-st.markdown("""
-<style>
-    [data-testid="collapsedControl"] { display: none; }
-    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .flip-clock { display: flex; gap: 4px; background: #222; padding: 8px; border-radius: 8px; }
-    .flip-digit {
-        background: #333; color: #FF4B4B; font-family: monospace;
-        font-size: 1.3rem; font-weight: bold; padding: 2px 8px;
-        border-radius: 4px; border: 1px solid #000;
-        background-image: linear-gradient(to bottom, #333 49%, #111 50%, #333 51%);
+# 加載法語模型
+@st.cache_resource
+def load_nlp():
+    return spacy.load("fr_core_news_md")
+
+nlp = load_nlp()
+
+# 模擬語義數據庫 (實際開發可串接 ConceptNet API)
+mock_data = {
+    "travail": {
+        "verbs": ["postuler", "travailler", "démissionner"],
+        "context": ["bureau", "télétravail", "entreprise"],
+        "slang": ["boulot", "taf"]
+    },
+    "manger": {
+        "verbs": ["cuisiner", "déjeuner", "dîner"],
+        "context": ["restaurant", "cuisine", "nourriture"],
+        "slang": ["bouffer"]
     }
-    .stButton>button {
-        width: 100% !important; height: 130px !important; 
-        border-radius: 12px !important; font-size: 0.9rem !important;
-        font-weight: bold !important; white-space: normal !important;
-        word-wrap: break-word !important; line-height: 1.3 !important;
-    }
-    div[data-testid="stButton"] > button[kind="primary"] {
-        background-color: #FF4B4B !important; color: white !important; border: none !important;
-    }
-    /* 此處省略之前定義的五色線框 CSS 邏輯，請保留在你的程式碼中 */
-</style>
-""", unsafe_allow_html=True)
+}
 
-# --- 3. Google Sheets 連線與資料同步 ---
-conn = st.connection("gsheets", type=GSheetsConnection)
+st.title("🌌 VocaGraph: 法語語義星系原型")
+st.sidebar.header("控制面板")
+target_word = st.sidebar.text_input("輸入法語單字 (如: travail, manger)", "travail").lower()
 
-def load_data():
-    # 讀取試算表，若不存在則初始化
-    try:
-        df = conn.read(worksheet="Solo_Evolution_Bingo", ttl="0s")
-        return df
-    except:
-        # 初始資料結構
-        return None
+col1, col2 = st.columns([3, 2])
 
-# --- 修正版：Google Sheets 存取邏輯 ---
-# 請確認你的 Google Sheets 左下角分頁名稱是否為 "Solo_Evolution_Bingo"
-# 如果不是，請手動將分頁改名，或將下方 worksheet 參數改為 "工作表1"
-
-def save_data():
-    import pandas as pd
-    # 1. 準備 25 格資料
-    data = {
-        "index": list(range(25)),
-        "task": st.session_state.custom_tasks,
-        "status": st.session_state.board_state.flatten().tolist()
-    }
-    df = pd.DataFrame(data)
+with col1:
+    st.subheader("語義關聯圖譜 (Semantic Galaxy)")
     
-    # 2. 使用你的專屬試算表 ID
-    spreadsheet_url = "https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit"
-    
-    try:
-        conn.update(
-            spreadsheet=spreadsheet_url,
-            worksheet="Solo_Evolution_Bingo", # 這裡要跟 Excel 分頁名稱完全一樣
-            data=df
-        )
-        st.toast("✅ 進化進度已同步至雲端！")
-    except Exception as e:
-        # PM 備註：如果噴錯，通常是分頁名稱(Worksheet)對不上
-        st.error(f"同步失敗：{e}")
-
-def load_data():
-    spreadsheet_url = "https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit"
-    try:
-        # ttl="0s" 確保每次重新整理都抓最新資料，不使用快取
-        df = conn.read(spreadsheet=spreadsheet_url, worksheet="Solo_Evolution_Bingo", ttl="0s")
-        return df
-    except:
-        return None
+    if target_word in mock_data:
+        # 建立 NetworkX 圖表
+        G = nx.Graph()
+        G.add_node(target_word, size=30, color="#FF4B4B", label=target_word.upper())
         
-# --- 4. 初始化 Session State ---
-if 'custom_tasks' not in st.session_state:
-    cloud_df = load_data()
-    if cloud_df is not None and not cloud_df.empty:
-        st.session_state.custom_tasks = cloud_df['task'].tolist()
-        st.session_state.board_state = np.array(cloud_df['status']).reshape(5, 5)
+        for category, words in mock_data[target_word].items():
+            for word in words:
+                G.add_node(word, size=15, title=category)
+                G.add_edge(target_word, word, weight=1)
+
+        # 轉化為 Pyvis 互動圖表
+        net = Network(height="500px", width="100%", bgcolor="#222222", font_color="white")
+        net.from_nx(G)
+        net.repulsion()
+        
+        # 儲存並讀取 HTML
+        path = "html_graph.html"
+        net.save_graph(path)
+        with open(path, 'r', encoding='utf-8') as f:
+            html_data = f.read()
+        components.html(html_data, height=550)
     else:
-        st.session_state.custom_tasks = ["目標 " + str(i+1) for i in range(25)]
-        st.session_state.board_state = np.zeros((5, 5), dtype=bool)
+        st.warning("目前僅支持示範單字：travail, manger")
 
-if 'is_editing' not in st.session_state: st.session_state.is_editing = True
-if 'last_lines_count' not in st.session_state: st.session_state.last_lines_count = 0
-if 'should_celebrate' not in st.session_state: st.session_state.should_celebrate = False
-
-# --- 5. 頂部 Header 與 倒數計時 ---
-t_date = datetime(2027, 1, 1)
-days_left = f"{(t_date - datetime.now()).days:03}"
-st.markdown(f"""
-<div class="header-box">
-    <h2 style="margin:0; font-size: 1.6rem;">🎯 進化原力導航盤</h2>
-    <div class="flip-clock">
-        <div class="flip-digit">{days_left[0]}</div>
-        <div class="flip-digit">{days_left[1]}</div>
-        <div class="flip-digit">{days_left[2]}</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-st.divider()
-
-# --- 6. 核心連線判定邏輯 ---
-def check_bingo(state):
-    rows = np.all(state, axis=1).sum()
-    cols = np.all(state, axis=0).sum()
-    diag1 = np.all(np.diag(state))
-    diag2 = np.all(np.diag(np.fliplr(state)))
-    return int(rows + cols + diag1 + diag2)
-
-# --- 7. 5x5 矩陣渲染 ---
-cols = st.columns(5)
-for i in range(25):
-    row, col = divmod(i, 5)
-    with cols[col]:
-        if st.session_state.is_editing:
-            st.session_state.custom_tasks[i] = st.text_input(f"G{i}", value=st.session_state.custom_tasks[i], key=f"edit_{i}", label_visibility="collapsed")
-        else:
-            is_checked = st.session_state.board_state[row, col]
-            if st.button(f"{'✅' if is_checked else ''}\n{st.session_state.custom_tasks[i]}", key=f"btn_{i}", type="primary" if is_checked else "secondary"):
-                st.session_state.board_state[row, col] = not is_checked
-                
-                # 判定連線與寫回雲端
-                new_lines = check_bingo(st.session_state.board_state)
-                if new_lines > st.session_state.last_lines_count:
-                    st.session_state.should_celebrate = True
-                st.session_state.last_lines_count = new_lines
-                save_data() # 即時同步
-                st.rerun()
-
-# --- 8. 氣球與底部控制 ---
-if not st.session_state.is_editing:
-    if st.session_state.should_celebrate:
-        st.balloons()
-        st.session_state.should_celebrate = False
-    if st.session_state.last_lines_count > 0:
-        st.success(f"🎊 精彩！達成 {st.session_state.last_lines_count} 條連線！")
+with col2:
+    st.subheader("AI 語境提取分析")
+    
+    sample_text = st.text_area("模擬抓取的法語新聞/論壇文本：", 
+                               "Le télétravail change la nature du travail en entreprise. "
+                               "Beaucoup de gens préfèrent bosser au café.")
+    
+    if st.button("執行 NLP 分析"):
+        doc = nlp(sample_text)
+        
+        st.write("**提取到的動詞與標籤：**")
+        for token in doc:
+            if token.pos_ == "VERB" or token.lemma_ == target_word:
+                st.info(f"詞條: {token.text} | 原形: {token.lemma_} | 詞性: {token.pos_}")
+        
+        # 模擬口語辨識
+        if "bosser" in sample_text or "boulot" in sample_text:
+            st.success("💡 偵測到道地口語 (Argot): 'bosser' -> 意同 'travailler'")
 
 st.divider()
-c1, c2 = st.columns(2)
-if st.session_state.is_editing:
-    if c1.button("🎯 鎖定並同步雲端", use_container_width=True):
-        save_data()
-        st.session_state.is_editing = False
-        st.rerun()
-else:
-    if c1.button("✍️ 修改內容", use_container_width=True):
-        st.session_state.is_editing = True
-        st.rerun()
-
-if c2.button("🗑️ 重置進度", use_container_width=True):
-    st.session_state.board_state = np.zeros((5, 5), dtype=bool)
-    st.session_state.last_lines_count = 0
-    save_data()
-    st.rerun()
-# 測試讀取功能
-def test_load():
-    try:
-        # 如果這一行執行成功，代表你的 JSON 金鑰與權限設定是 100% 正確的
-        data = conn.read(spreadsheet="https://docs.google.com/spreadsheets/d/187IthyjmqwaLuVTv93ba7IGHbhmYMSyB1V5H94rYDho/edit", worksheet="Solo_Evolution_Bingo")
-        st.write("✅ 讀取成功！")
-        st.write(data)
-    except Exception as e:
-        st.write(f"❌ 讀取失敗，原因：{e}")
+st.caption("Solo Evolution - 法語學習開發原型 v1.0")
