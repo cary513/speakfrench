@@ -1,4 +1,4 @@
 streamlit
 spacy
 st-gsheets-connection
-pandas
+panda
