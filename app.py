@@ -1,45 +1,63 @@
 import streamlit as st
-from openai import OpenAI
+from services.ai_service import AIService
 from gtts import gTTS
 import os
-import json
 
-# 初始化 OpenAI 客戶端 (或使用 Claude API)
-client = OpenAI(api_key="你的API_KEY")
+# 介面設定
+st.set_page_config(page_title="AI Language Swiper", layout="centered")
+st.title("🇫🇷 AI 語言學習卡片")
 
-def get_word_info(word):
-    # 調用 LLM 取得單字詳細資訊
-    response = client.chat.completions.create(
-        model="gpt-4o", # 或 claude-3-5-sonnet
-        messages=[
-            {"role": "system", "content": "You are a dictionary assistant. Return JSON only."},
-            {"role": "user", "content": f"Explain the word: {word} in Traditional Chinese."}
-        ],
-        response_format={ "type": "json_object" }
-    )
-    return json.loads(response.choices[0].message.content)
+# 初始化 Service (請在此輸入你的 API Key)
+# 產品建議：正式環境應使用 st.secrets 隱藏 Key
+ai_handler = AIService(api_key="你的_OPENAI_API_KEY")
 
-def play_audio(word, lang='fr'):
-    # 生成語音檔案
-    tts = gTTS(text=word, lang=lang)
-    tts.save("temp_audio.mp3")
-    return "temp_audio.mp3"
+# 使用 Session State 存儲當前單字狀態
+if "current_word_data" not in st.session_state:
+    st.session_state.current_word_data = None
 
-# --- Streamlit UI 介面 ---
-st.title("AI 語言學習卡片")
+# --- UI 輸入區 ---
+word_input = st.text_input("輸入你想查詢的單字：", placeholder="例如：Bonjour")
 
-word_input = st.text_input("輸入你想學習的單字 (法文或英文):")
+if st.button("查詢"):
+    if word_input:
+        with st.spinner('AI 正在分析中...'):
+            data = ai_handler.get_word_details(word_input)
+            st.session_state.current_word_data = data
+            
+            # 產生音檔
+            tts = gTTS(text=word_input, lang='fr')
+            tts.save("speech.mp3")
 
-if word_input:
-    # 1. 取得 AI 解析資料
-    data = get_word_info(word_input)
+# --- 顯示結果區 ---
+if st.session_state.current_word_data:
+    data = st.session_state.current_word_data
     
-    # 2. 顯示結果
-    st.subheader(f"{data['word']} [{data['phonetic']}]")
-    st.write(f"**意思：** {data['meaning']}")
-    st.info(f"**例句：** {data['example_sentence']}\n\n({data['sentence_translation']})")
-    
-    # 3. 發音功能
-    audio_path = play_audio(word_input)
-    audio_file = open(audio_path, 'rb')
-    st.audio(audio_file.read(), format='audio/mp3')
+    st.divider()
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.header(f"{data['word']} /{data['phonetic']}/")
+    with col2:
+        if os.path.exists("speech.mp3"):
+            st.audio("speech.mp3")
+
+    st.write(f"💡 **意思：** {data['translation']}")
+    st.info(f"📝 **例句：** {data['example']}\n\n({data['example_cn']})")
+
+    # --- Memo 與 AI 校正 ---
+    st.subheader("我的造句筆記 (Memo)")
+    user_memo = st.text_area("試著用這個單字造句...")
+    if st.button("AI 幫我改造句"):
+        if user_memo:
+            correction = ai_handler.correct_memo(user_memo)
+            st.success(f"**AI 建議：**\n{correction}")
+
+    # --- 左右滑動邏輯 (MVP 暫以按鈕取代) ---
+    st.divider()
+    left_col, right_col = st.columns(2)
+    with left_col:
+        if st.button("⬅️ 我已經學會了 (移至已學資料夾)"):
+            st.toast("已移動到已學資料夾！")
+            # 這裡之後會補上存入資料庫的邏輯
+    with right_col:
+        if st.button("➡️ 之後再複習 (移至複習資料夾)"):
+            st.toast("已加入複習清單！")
