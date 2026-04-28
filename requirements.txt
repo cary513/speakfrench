@@ -1,5 +1,4 @@
 streamlit
-networkx
-pyvis
-spacy
-https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.7.0/fr_core_news_md-3.7.0.tar.gz#egg=fr_core_news_md
+openai
+gTTS
+pandas
