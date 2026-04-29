@@ -1,4 +1,3 @@
-anthropic
 streamlit
+google-generativeai
 gTTS
-pandas
