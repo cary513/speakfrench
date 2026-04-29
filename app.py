@@ -2,6 +2,21 @@ import streamlit as st
 from services.ai_service import AIService
 from gtts import gTTS
 import os
+import anthropic
+
+class AIService:
+    def __init__(self, api_key):
+        self.client = anthropic.Anthropic(api_key=api_key)
+
+    def get_word_details(self, word):
+        # Claude 的調用方式稍有不同，但邏輯一樣
+        response = self.client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=1000,
+            system="You are a dictionary. Return JSON only.",
+            messages=[{"role": "user", "content": f"Analyze: {word}"}]
+        )
+        # 解析邏輯...
 
 # 介面設定
 st.set_page_config(page_title="AI Language Swiper", layout="centered")
