@@ -1,65 +1,34 @@
-import google.generativeai as genai
 import os
 import json
-import re
+import google.generativeai as genai
 
 class AIService:
     def __init__(self):
         api_key = os.getenv("GOOGLE_API_KEY")
-
         if not api_key:
-            raise ValueError("❌ GOOGLE_API_KEY 沒設定")
-
+            raise ValueError("未偵測到 GOOGLE_API_KEY 環境變數")
         genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            generation_config={"response_mime_type": "application/json"}
+        )
 
-        try:
-            self.model = genai.GenerativeModel("gemini-1.5-flash-latest")
-        except:
-            self.model = genai.GenerativeModel("gemini-1.5-pro-latest")
-
-    def clean_json(self, text):
-        text = re.sub(r"```json|```", "", text)
-        return text.strip()
-
-    def get_word_info(self, word):
-        prompt = f"""
-        請分析單字：{word}
-
-        並用 JSON 回傳：
-        {{
-            "word": "",
-            "phonetic": "",
-            "meaning": "",
-            "example_sentence": "",
-            "sentence_translation": ""
-        }}
-
-        規則：
-        - 僅回傳 JSON
-        - 不要 markdown
-        - 用繁體中文
+    def get_word_analysis(self, word):
+        system_prompt = """
+        你是一位專業語言學教授。分析單字並回傳 JSON 格式：
+        {
+            "word": "string",
+            "lang_code": "en/fr",
+            "phonetic": "IPA",
+            "meaning": "繁體中文解釋",
+            "example_sentence": "例句",
+            "sentence_translation": "例句翻譯"
+        }
         """
-
-        response = self.model.generate_content(prompt)
-        text = response.text
-
+        user_prompt = f"請分析單字：{word}"
+        
+        response = self.model.generate_content([system_prompt, user_prompt])
         try:
-            clean_text = self.clean_json(text)
-            data = json.loads(clean_text)
-
-            data.setdefault("word", word)
-            data.setdefault("phonetic", "")
-            data.setdefault("meaning", "")
-            data.setdefault("example_sentence", "")
-            data.setdefault("sentence_translation", "")
-
-            return data
-
-        except:
-            return {
-                "word": word,
-                "phonetic": "",
-                "meaning": text,
-                "example_sentence": "",
-                "sentence_translation": ""
-            }
+            return json.loads(response.text)
+        except json.JSONDecodeError:
+            return None
