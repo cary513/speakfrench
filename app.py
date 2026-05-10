@@ -20,25 +20,31 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def save_word_to_sheets(new_data_dict):
     try:
-        # 讀取目前的資料
+        # 1. 讀取目前的資料，ttl=0 確保不使用快取，直接抓取雲端最新狀態
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
-        # 處理「完全空白」或「沒有標題」的情況
-        if existing_data is None or existing_data.empty or 'word' not in existing_data.columns:
-            # 如果是空的，直接把目前的單字當作第一筆資料
+        # 2. 強制檢查讀取進來的資料結構
+        # 有時候讀進來會變成 None 或 全空，這時我們自己建立一個有標題的 DataFrame
+        if existing_data is None or existing_data.empty:
             updated_df = pd.DataFrame([new_data_dict])
         else:
-            # 如果已經有資料，先檢查是否重複
-            if new_data_dict['word'] in existing_data['word'].values:
-                return 
-            # 沒重複就合併
-            updated_df = pd.concat([existing_data, pd.DataFrame([new_data_dict])], ignore_index=True)
+            # 3. 確保 'word' 這一欄真的存在於讀取的資料中
+            if 'word' in existing_data.columns:
+                # 檢查是否重複
+                if new_data_dict['word'] in existing_data['word'].astype(str).values:
+                    st.toast(f"💡 {new_data_dict['word']} 已在雲端庫中")
+                    return 
+                # 合併新舊資料
+                updated_df = pd.concat([existing_data, pd.DataFrame([new_data_dict])], ignore_index=True)
+            else:
+                # 如果讀進來沒抓到標題，直接以新資料為主
+                updated_df = pd.DataFrame([new_data_dict])
         
-        # 存回 Google Sheets
+        # 4. 存回 Google Sheets
         conn.update(worksheet="Sheet1", data=updated_df)
         st.toast("✅ 雲端同步成功！")
     except Exception as e:
-        st.error(f"雲端同步失敗: {e}")
+        st.error(f"雲端同步失敗，請檢查權限或網路: {e}")
 
 # --- 原有初始化 Session State ---
 if "word_history" not in st.session_state:
