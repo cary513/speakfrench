@@ -1,4 +1,5 @@
 streamlit
 google-generativeai
 gTTS
-st-gsheets-connection
+streamlit-gsheets
+pandas
