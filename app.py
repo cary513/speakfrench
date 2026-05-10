@@ -20,23 +20,23 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def save_word_to_sheets(new_data_dict):
     try:
-        # 讀取目前的資料（如果試算表是空的，會回傳空 DataFrame）
+        # 讀取目前的資料
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         
-        # 將新單字轉為 DataFrame
-        new_entry = pd.DataFrame([new_data_dict])
-        
-        # 合併舊資料與新資料
-        if existing_data.empty:
-            updated_df = new_entry
+        # 處理「完全空白」或「沒有標題」的情況
+        if existing_data is None or existing_data.empty or 'word' not in existing_data.columns:
+            # 如果是空的，直接把目前的單字當作第一筆資料
+            updated_df = pd.DataFrame([new_data_dict])
         else:
-            # 檢查是否重複，若重複則不重複加入
+            # 如果已經有資料，先檢查是否重複
             if new_data_dict['word'] in existing_data['word'].values:
                 return 
-            updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
+            # 沒重複就合併
+            updated_df = pd.concat([existing_data, pd.DataFrame([new_data_dict])], ignore_index=True)
         
         # 存回 Google Sheets
         conn.update(worksheet="Sheet1", data=updated_df)
+        st.toast("✅ 雲端同步成功！")
     except Exception as e:
         st.error(f"雲端同步失敗: {e}")
 
