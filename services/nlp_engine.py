@@ -1,26 +1,28 @@
-import streamlit as st
+import io
 from gtts import gTTS
-from io import BytesIO
 
 class NLPEngine:
     def __init__(self):
-        # 僅在真的需要 NLP 分析時才加載 spacy
-        self.nlp = None
-
-    @st.cache_data # 使用 cache 避免同一個單字重複向 Google 請求
-    def get_speech(self, text, lang='fr'):
+        # 初始化設定
+        pass
+        
+    def generate_audio(self, text, lang):
         """
-        將文字轉語音，並回傳 BytesIO 流
+        根據輸入的文字與語言代碼生成語音串流
+        :param text: 要轉換為語音的文字
+        :param lang: 語言代碼（如 'en', 'fr'）
+        :return: BytesIO 語音資料流
         """
-        try:
-            mp3_fp = BytesIO()
-            tts = gTTS(text=text, lang=lang)
-            tts.write_to_fp(mp3_fp)
-            mp3_fp.seek(0)
-            return mp3_fp
-        except Exception as e:
-            st.error(f"語音生成失敗: {e}")
-            return None
-
-# 實例化供外部調用
-nlp_engine = NLPEngine()
+        # 將應用程式的語言代碼對應至 gTTS 支援的格式
+        lang_mapping = {"en": "en", "fr": "fr"}
+        tts_lang = lang_mapping.get(lang, "en")
+        
+        # 產生語音物件
+        tts = gTTS(text=text, lang=tts_lang, slow=False)
+        
+        # 將語音寫入記憶體串流，供 Streamlit st.audio 播放
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        
+        return fp
