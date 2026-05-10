@@ -75,26 +75,30 @@ with st.sidebar:
 # ==========================================
 tab1, tab2 = st.tabs(["🔍 單字查詢", "🗂️ 複習卡 (Flashcards)"])
 
+# 頁籤 1：單字查詢
 with tab1:
     st.title("單字分析與探索")
-    word_input = st.text_input("輸入單字（自動偵測英/法文）", placeholder="例如: innovation")
+    word_input = st.text_input("輸入單字（自動偵測英/法文）", placeholder="例如: innovation", key="main_word_input")
     
-    if st.button("開始分析"):
+    if st.button("開始分析", key="analyze_btn"):
         if word_input:
-            with st.spinner("AI 正在建模中..."):
+            # 1. 介面視覺回饋
+            with st.spinner("AI 正在分析中..."):
                 data = ai_service.get_word_analysis(word_input)
-                
+            
             if data:
+                # 2. 更新 Session 狀態（確保 UI 即時呈現）
                 st.session_state.current_data = data
                 
-                # A. 儲存至本地 Session
+                # 3. 更新本地歷史紀錄
                 if word_input not in st.session_state.word_history:
                     st.session_state.word_history.append(word_input)
+                
                 if word_input not in st.session_state.review_zone and word_input not in st.session_state.brain_zone:
                     st.session_state.review_zone.append(word_input)
-                
-                # B. --- 新增：同步至 Google Sheets ---
-                with st.status("正在同步至雲端大腦..."):
+
+                # 4. 執行雲端同步（使用 status 讓使用者看到進度）
+                with st.status("正在同步至雲端大腦...", expanded=False) as status:
                     save_word_to_sheets({
                         "word": data['word'],
                         "lang_code": data['lang_code'],
@@ -103,28 +107,12 @@ with tab1:
                         "example_sentence": data['example_sentence'],
                         "status": "review"
                     })
+                    status.update(label="✅ 同步完成！", state="complete", expanded=False)
                 
+                # 5. 強制刷新畫面
                 st.rerun()
             else:
-                st.error("分析失敗")
-
-    # ... (顯示查詢結果的程式碼不變)
-    if "current_data" in st.session_state:
-        data = st.session_state.current_data
-        with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.subheader(f"{data['word']} /{data['phonetic']}/ ({data['lang_code']})")
-            with col2:
-                try:
-                    audio_stream = nlp_engine.generate_audio(data['word'], lang=data['lang_code'])
-                    st.audio(audio_stream, format='audio/mp3')
-                except Exception:
-                    st.warning("語音生成暫時無法使用")
-            st.write(f"**意思：** {data['meaning']}")
-            st.markdown("---")
-            st.write("**例句演示：**")
-            st.info(f"{data['example_sentence']}\n\n*{data['sentence_translation']}*")
+                st.error("AI 分析失敗，請檢查 API Key 或網路。")
 
 # 頁籤 2：複習卡
 with tab2:
