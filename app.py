@@ -145,4 +145,4 @@ with tab2:
             st.markdown(f"<h2 style='text-align: center;'>{current_word}</h2>", unsafe_allow_html=True)
             # 若當前緩存資料剛好是這個單字，就顯示詳細內容
             if "current_data" in st.session_state and st.session_state.current_data['word'] == current_word:
-                card_data = st.session
+                card_data = st.session_state
