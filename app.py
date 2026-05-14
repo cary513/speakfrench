@@ -159,4 +159,43 @@ with tab1:
 # 頁籤 2：複習卡
 with tab2:
     st.title("🗂️ 複習卡系統")
-    if not st.session_state.
+    if not st.session_state.review_zone:
+        st.success("🎉 太棒了！所有單字都已經記住了！")
+    else:
+        if st.session_state.current_card_index >= len(st.session_state.review_zone):
+            st.session_state.current_card_index = 0
+            
+        current_word = st.session_state.review_zone[st.session_state.current_card_index]
+        
+        # 顯示卡片內容
+        with st.container(border=True):
+            st.markdown(f"<h2 style='text-align: center;'>{current_word}</h2>", unsafe_allow_html=True)
+            
+            # 檢查 current_data 並顯示內容
+            if "current_data" in st.session_state and st.session_state.current_data['word'] == current_word:
+                card_data = st.session_state.current_data
+                st.markdown(f"<p style='text-align: center;'><strong>/{card_data['phonetic']}/</strong></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align: center;'>{card_data['meaning']}</p>", unsafe_allow_html=True)
+            else:
+                st.caption("🔍 提示：若要查看詳細釋義，請先在查詢頁面分析此單字。")
+
+        # 模擬左右滑動按鈕
+        col_left, _, col_right = st.columns([1, 2, 1])
+        with col_left:
+            if st.button("👈 左滑：待複習", use_container_width=True):
+                st.session_state.current_card_index = (st.session_state.current_card_index + 1) % len(st.session_state.review_zone)
+                st.rerun()
+        with col_right:
+            if st.button("👉 右滑：已記憶", use_container_width=True):
+                # 1. 從本地待複習區移出
+                word_to_move = st.session_state.review_zone.pop(st.session_state.current_card_index)
+                
+                # 2. 加入本地大腦區
+                if word_to_move not in st.session_state.brain_zone:
+                    st.session_state.brain_zone.append(word_to_move)
+                
+                # 3. 同步更新雲端 Supabase 資料庫中的狀態為 'mastered'
+                update_word_status_in_supabase(word_to_move, "mastered")
+                
+                st.session_state.current_card_index = 0
+                st.rerun()
