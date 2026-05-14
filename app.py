@@ -45,16 +45,25 @@ def load_data_from_supabase():
 # 函式：儲存新單字至 Supabase
 def save_word_to_supabase(data_dict):
     try:
-        response = supabase.table("vocabulary").select("word").eq("word", data_dict["word"]).execute()
+        # 強制執行查詢
+        res = supabase.table("vocabulary").select("word").eq("word", data_dict["word"]).execute()
         
-        # 使用 len() 判斷更為嚴謹與穩定
-        if len(response.data) == 0:
-            supabase.table("vocabulary").insert(data_dict).execute()
-            st.toast(f"✅ {data_dict['word']} 已同步至雲端資料庫")
+        # 診斷用：如果表格沒問題，這裡應該會印出空列表 []
+        # st.write(f"Debug - DB Response: {res.data}") 
+
+        if len(res.data) == 0:
+            # 執行插入
+            insert_res = supabase.table("vocabulary").insert(data_dict).execute()
+            if insert_res.data:
+                st.toast(f"✅ {data_dict['word']} 成功存入雲端！")
+            else:
+                st.error("❌ 插入成功但未回傳資料，請檢查 RLS 設定。")
         else:
-            st.toast(f"💡 {data_dict['word']} 已在資料庫中")
+            st.toast(f"💡 {data_dict['word']} 已存在。")
+            
     except Exception as e:
-        st.error(f"雲端儲存失敗: {e}")
+        # 這裡會抓到最真實的報錯（例如：permission denied）
+        st.error(f"⚠️ 雲端寫入發生技術錯誤: {e}")
 
 # 函式：更新 Supabase 中的單字狀態
 def update_word_status_in_supabase(word: str, new_status: str):
