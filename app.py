@@ -25,7 +25,26 @@ def get_services():
 
 ai_service, nlp_engine = get_services()
 
-# 儲存單字至 Supabase
+# 函式：從 Supabase 載入歷史資料 (解決重整消失問題)
+def load_data_from_supabase():
+    try:
+        # 從資料庫抓取所有單字紀錄
+        response = supabase.table("vocabulary").select("*").execute()
+        data = response.data
+        
+        if data:
+            # 依據資料庫中的 status 分流到對應的本地暫存區
+            st.session_state.review_zone = [item['word'] for item in data if item['status'] == 'review']
+            st.session_state.brain_zone = [item['word'] for item in data if item['status'] == 'mastered']
+            st.session_state.word_history = [item['word'] for item in data]
+        else:
+            st.session_state.review_zone = []
+            st.session_state.brain_zone = []
+            st.session_state.word_history = []
+    except Exception as e:
+        st.error(f"從雲端載入資料失敗: {e}")
+
+# 函式：儲存新單字至 Supabase
 def save_word_to_supabase(data_dict):
     try:
         # PM 邏輯：檢查單字是否重複 (確保資料庫唯一性)
@@ -40,15 +59,23 @@ def save_word_to_supabase(data_dict):
     except Exception as e:
         st.error(f"雲端儲存失敗: {e}")
 
-# --- 初始化 Session State ---
+# 函式：更新 Supabase 中的單字狀態 (右滑已記憶時調用)
+def update_word_status_in_supabase(word: str, new_status: str):
+    try:
+        supabase.table("vocabulary").update({"status": new_status}).eq("word", word).execute()
+        st.toast(f"雲端同步成功：{word} 移至大腦區 🧠")
+    except Exception as e:
+        st.error(f"同步狀態至雲端失敗: {e}")
+
+# --- 初始化 Session State (加入開機自動加載邏輯) ---
 if "word_history" not in st.session_state:
     st.session_state.word_history = []
-if "review_zone" not in st.session_state:
     st.session_state.review_zone = []
-if "brain_zone" not in st.session_state:
     st.session_state.brain_zone = []
-if "current_card_index" not in st.session_state:
     st.session_state.current_card_index = 0
+    
+    # 第一次執行 App 或重新整理時，自動去 Supabase 撈取資料
+    load_data_from_supabase()
 
 # ==========================================
 # 3. 側邊欄 (Sidebar) 
@@ -86,14 +113,14 @@ with tab1:
                 data = ai_service.get_word_analysis(word_input)
                 
             if data:
-                # 儲存到本地
+                # 儲存到本地 Session State
                 st.session_state.current_data = data
                 if word_input not in st.session_state.word_history:
                     st.session_state.word_history.append(word_input)
                 if word_input not in st.session_state.review_zone and word_input not in st.session_state.brain_zone:
                     st.session_state.review_zone.append(word_input)
                 
-                # 同步到 Supabase (呼叫修正後的函式名稱)
+                # 同步到 Supabase
                 with st.status("正在同步至雲端大腦..."):
                     save_word_to_supabase({
                         "word": data['word'],
@@ -132,37 +159,4 @@ with tab1:
 # 頁籤 2：複習卡
 with tab2:
     st.title("🗂️ 複習卡系統")
-    if not st.session_state.review_zone:
-        st.success("🎉 太棒了！所有單字都已經記住了！")
-    else:
-        # 這裡所有的程式碼都必須比 else 多出 4 個空格
-        if st.session_state.current_card_index >= len(st.session_state.review_zone):
-            st.session_state.current_card_index = 0
-            
-        current_word = st.session_state.review_zone[st.session_state.current_card_index]
-        
-        # 顯示卡片內容
-        with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center;'>{current_word}</h2>", unsafe_allow_html=True)
-            
-            # 修正：檢查 current_data 並顯示內容
-            if "current_data" in st.session_state and st.session_state.current_data['word'] == current_word:
-                card_data = st.session_state.current_data
-                st.markdown(f"<p style='text-align: center;'><strong>/{card_data['phonetic']}/</strong></p>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center;'>{card_data['meaning']}</p>", unsafe_allow_html=True)
-            else:
-                st.caption("🔍 提示：若要查看詳細釋義，請先在查詢頁面分析此單字。")
-
-        # 模擬左右滑動按鈕 (補充這段確保功能完整)
-        col_left, _, col_right = st.columns([1, 2, 1])
-        with col_left:
-            if st.button("👈 左滑：待複習", use_container_width=True):
-                st.session_state.current_card_index = (st.session_state.current_card_index + 1) % len(st.session_state.review_zone)
-                st.rerun()
-        with col_right:
-            if st.button("👉 右滑：已記憶", use_container_width=True):
-                word_to_move = st.session_state.review_zone.pop(st.session_state.current_card_index)
-                if word_to_move not in st.session_state.brain_zone:
-                    st.session_state.brain_zone.append(word_to_move)
-                st.session_state.current_card_index = 0
-                st.rerun()
+    if not st.session_state.
