@@ -5,12 +5,13 @@ from supabase import create_client, Client
 import pandas as pd
 
 # ==========================================
-# 1. 頁面與服務初始化
+# 1. 頁面與服務初始化 (Initialization)
 # ==========================================
 st.set_page_config(page_title="AI 語言學習分析工具 V2", layout="wide")
 
 @st.cache_resource
 def init_supabase() -> Client:
+    """初始化 Supabase 客戶端"""
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
@@ -19,6 +20,7 @@ supabase = init_supabase()
 
 @st.cache_resource
 def get_services():
+    """初始化 AI 與 NLP 引擎"""
     ai_service = AIService()
     nlp_engine = NLPEngine()
     return ai_service, nlp_engine
@@ -26,11 +28,11 @@ def get_services():
 ai_service, nlp_engine = get_services()
 
 # ==========================================
-# 2. 資料庫核心資料流 (Data Flow)
+# 2. 資料庫核心資料流 (Data Flow & Persistence)
 # ==========================================
 
-# 函式：從 Supabase 載入歷史單字
 def load_data_from_supabase():
+    """從 Supabase 載入歷史單字與複習卡狀態"""
     try:
         response = supabase.table("vocabulary").select("*").execute()
         data = response.data
@@ -45,8 +47,8 @@ def load_data_from_supabase():
     except Exception as e:
         st.error(f"從雲端載入單字失敗: {e}")
 
-# 函式：儲存新單字至 Supabase
 def save_word_to_supabase(data_dict):
+    """儲存新單字至 Supabase 歷史清單"""
     try:
         response = supabase.table("vocabulary").select("word").eq("word", data_dict["word"]).execute()
         if len(response.data) == 0:
@@ -57,82 +59,101 @@ def save_word_to_supabase(data_dict):
     except Exception as e:
         st.error(f"雲端單字儲存失敗: {e}")
 
-# 函式：更新單字狀態
 def update_word_status_in_supabase(word: str, new_status: str):
+    """更新單字或句子在複習卡系統中的狀態"""
     try:
         supabase.table("vocabulary").update({"status": new_status}).eq("word", word).execute()
-        st.toast(f"雲端同步成功：{word} 移至大腦區 🧠")
+        st.toast(f"雲端同步成功：{word} 狀態已更新 🧠")
     except Exception as e:
         st.error(f"同步狀態失敗: {e}")
 
-# 函式：儲存情境句子到 vocabulary 表格中（將句子當成 word 處理，方便一同納入複習系統）
-def save_phrase_to_vocabulary(phrase_dict):
+def save_profile_to_supabase(profile_dict):
+    """將個人設定持久化寫入 Supabase，確保重整不消失"""
     try:
-        # 用句子本身當作唯一值檢查
+        # PM 簡化邏輯：單用戶架構下，先清除舊檔案再寫入新檔案
+        supabase.table("user_profile").delete().neq("display_name", "").execute()
+        supabase.table("user_profile").insert(profile_dict).execute()
+        st.toast("🎯 個人建模設定已永久保存至雲端！")
+    except Exception as e:
+        st.error(f"雲端設定儲存失敗: {e}")
+
+def load_profile_from_supabase():
+    """開機時自動從雲端撈取個人設定"""
+    try:
+        response = supabase.table("user_profile").select("*").limit(1).execute()
+        if response.data:
+            st.session_state.user_profile = response.data[0]
+        else:
+            st.session_state.user_profile = None
+    except Exception as e:
+        st.session_state.user_profile = None
+
+def save_phrase_to_vocabulary(phrase_dict):
+    """將收藏的情境句子包裝存入 vocabulary 表，完美整合進現有卡片系統"""
+    try:
         response = supabase.table("vocabulary").select("word").eq("word", phrase_dict["word"]).execute()
         if len(response.data) == 0:
             supabase.table("vocabulary").insert(phrase_dict).execute()
-            st.toast("📥 句子已成功收藏至【待複習區】！")
+            st.toast("📥 實戰對話已成功收藏至【待複習區】！")
             
-            # 同步更新本地的暫存狀態，讓側邊欄立刻重新渲染
+            # 即時渲染：讓側邊欄與暫存區不需要重新整理便同步更新
             if phrase_dict["word"] not in st.session_state.review_zone:
                 st.session_state.review_zone.append(phrase_dict["word"])
         else:
-            st.toast("💡 這句對話已經在你的收藏庫中囉！")
+            st.toast("💡 這句對話已經在您的收藏庫中囉！")
     except Exception as e:
-        st.error(f"收藏句子失敗: {e}")
+        st.error(f"收藏對話失敗: {e}")
 
-# --- 初始化 Session State ---
+# --- 核心開機狀態檢查與初始化 ---
 if "word_history" not in st.session_state:
     st.session_state.word_history = []
     st.session_state.review_zone = []
     st.session_state.brain_zone = []
     st.session_state.current_card_index = 0
+    
+    # 執行資料庫數據雙向同步
     load_data_from_supabase()
-
-if "user_profile" not in st.session_state:
-    st.session_state.user_profile = None
+    load_profile_from_supabase()
 
 if "selected_category" not in st.session_state:
     st.session_state.selected_category = None
 
 # ==========================================
-# 3. 側邊欄 (Sidebar)
+# 3. 介面側邊欄 (Sidebar Widget)
 # ==========================================
 with st.sidebar:
-    st.header("📚 知識庫分類")
+    st.header("📚 知識庫分類看板")
     
     st.subheader("待複習區 (Review Zone)")
     if not st.session_state.review_zone:
         st.caption("無待複習內容")
     else:
         for word in st.session_state.review_zone:
-            # 如果是長句子，縮短顯示避免側邊欄爆掉
             display_text = word if len(word) < 15 else f"{word[:15]}..."
             st.markdown(f"🟨 **{display_text}**")
             
     st.markdown("---")
-    st.subheader("大腦區 (Mastered)")
+    st.subheader("大腦記憶區 (Mastered)")
     if not st.session_state.brain_zone:
-        st.caption("尚未記憶內容")
+        st.caption("尚未有記憶完成的單字")
     else:
         for word in st.session_state.brain_zone:
             display_text = word if len(word) < 15 else f"{word[:15]}..."
             st.markdown(f"🟩 **{display_text}**")
 
 # ==========================================
-# 4. 主畫面 (Main Content) 三頁籤系統
+# 4. 主畫面 (Main Application Workspace)
 # ==========================================
 tab1, tab2, tab3 = st.tabs(["🔍 單字查詢", "🗂️ 複習卡 (Flashcards)", "🚀 精選情境句型"])
 
-# ---- TAB 1：單字查詢 ----
+# ---- TAB 1：單字查詢分析 ----
 with tab1:
-    st.title("單字分析與探索")
-    word_input = st.text_input("輸入單字（自動偵測英/法文）", placeholder="例如: innovation", key="main_input")
+    st.title("單字多維度分析探索")
+    word_input = st.text_input("輸入單字（自動辨識英文/法文）", placeholder="例如: l'innovation", key="main_input")
     
     if st.button("開始分析", key="analyze_btn"):
         if word_input:
-            with st.spinner("AI 正在建模中..."):
+            with st.spinner("AI 專家正在進行詞彙建模..."):
                 data = ai_service.get_word_analysis(word_input)
                 
             if data:
@@ -142,18 +163,18 @@ with tab1:
                 if word_input not in st.session_state.review_zone and word_input not in st.session_state.brain_zone:
                     st.session_state.review_zone.append(word_input)
                 
-                with st.status("正在同步至雲端大腦..."):
-                    save_word_to_supabase({
-                        "word": data['word'],
-                        "lang_code": data['lang_code'],
-                        "phonetic": data['phonetic'],
-                        "meaning": data['meaning'],
-                        "example_sentence": data['example_sentence'],
-                        "status": "review"
-                    })
+                # 同步到 Supabase
+                save_word_to_supabase({
+                    "word": data['word'],
+                    "lang_code": data['lang_code'],
+                    "phonetic": data['phonetic'],
+                    "meaning": data['meaning'],
+                    "example_sentence": data['example_sentence'],
+                    "status": "review"
+                })
                 st.rerun()
             else:
-                st.error("分析失敗")
+                st.error("單字分析失敗，請檢查 API 金鑰或網路連線。")
 
     if "current_data" in st.session_state:
         data = st.session_state.current_data
@@ -167,18 +188,18 @@ with tab1:
                     if audio_stream:
                         st.audio(audio_stream, format='audio/mp3')
                 except Exception:
-                    st.warning("語音生成暫時無法使用")
+                    st.warning("語音生成系統暫時離線")
             
-            st.write(f"**意思：** {data['meaning']}")
+            st.write(f"**核心釋義：** {data['meaning']}")
             st.markdown("---")
-            st.write("**例句演示：**")
+            st.write("**語境例句：**")
             st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
 
-# ---- TAB 2：複習卡 ----
+# ---- TAB 2：複習卡系統 (字卡輪播) ----
 with tab2:
-    st.title("🗂️ 複習卡系統")
+    st.title("🗂️ 高擬真記憶字卡")
     if not st.session_state.review_zone:
-        st.success("🎉 太棒了！所有單字和句子都已經記住了！")
+        st.success("🎉 太棒了！您目前沒有任何待複習的單字或場景對話！")
     else:
         if st.session_state.current_card_index >= len(st.session_state.review_zone):
             st.session_state.current_card_index = 0
@@ -203,26 +224,27 @@ with tab2:
                 st.markdown(f"<p style='text-align: center;'><strong>/{card_data.get('phonetic', '')}/</strong></p>", unsafe_allow_html=True)
                 st.markdown(f"<p style='text-align: center; font-size: 1.1em;'>{card_data.get('meaning', '')}</p>", unsafe_allow_html=True)
                 if card_data.get('example_sentence') and card_data.get('example_sentence') != current_word:
-                    st.caption(f"💡 延伸上下文/例句提示：{card_data['example_sentence']}")
+                    st.caption(f"💡 上下文與潛規則提示：{card_data['example_sentence']}")
             else:
-                st.caption("🔍 無法載入詳細釋義，可能為收藏的情境句，可直接滑動複習。")
+                st.caption("🔍 情境收藏對話，可直接點選滑動按鈕進行分類記憶。")
 
         col_left, _, col_right = st.columns([1, 2, 1])
         with col_left:
-            if st.button("👈 左滑：待複習", use_container_width=True, key="left_swipe_btn"):
+            if st.button("👈 左滑：留著複習", use_container_width=True, key="left_swipe_btn"):
                 st.session_state.current_card_index = (st.session_state.current_card_index + 1) % len(st.session_state.review_zone)
                 st.rerun()
         with col_right:
-            if st.button("👉 右滑：已記憶", use_container_width=True, key="right_swipe_btn"):
+            if st.button("👉 右滑：完全記住", use_container_width=True, key="right_swipe_btn"):
                 word_to_move = st.session_state.review_zone.pop(st.session_state.current_card_index)
                 if word_to_move not in st.session_state.brain_zone:
                     st.session_state.brain_zone.append(word_to_move)
                 
+                # 同步更新 Supabase 資料庫中的狀態為 mastered
                 update_word_status_in_supabase(word_to_move, "mastered")
                 st.session_state.current_card_index = 0
                 st.rerun()
 
-# ---- TAB 3：新開發！精選情境句型區 (核心功能升級) ----
+# ---- TAB 3：精選情境句型區 (新功能上線) ----
 with tab3:
     CATEGORIES = {
         "💼 職場用語": "workplace",
@@ -234,49 +256,53 @@ with tab3:
         "🍻 交友與價值觀": "social"
     }
 
-    # 門檻機制：填寫個人 profile 檔案
+    # 驗證機制：若雲端與本地皆無設定，引導填寫個人化 Profile
     if st.session_state.user_profile is None:
-        st.subheader("🚀 建構你的 AI 個人化語言模型")
-        st.info("請花 10 秒填寫你的背景，AI 將為你過濾掉僵硬的教科書台詞，直接精選出符合你特質的法文流行語！")
+        st.subheader("🚀 客製化您的 AI 個人化法語大腦")
+        st.info("請填寫您的基礎實戰背景，AI 專家將自動為您屏蔽死板台詞，生成貼合您特質的巴黎口語！")
         
         with st.form("profile_form_upgrade"):
             c1, c2 = st.columns(2)
             with c1:
-                name = st.text_input("如何稱呼您？ (Name)", placeholder="例如: Cary")
-                level = st.selectbox("目前法語程度 (Level)", ["入門級 (A1)", "初級實用 (A2)", "中級流利 (B1)", "進階商務 (B2)"])
+                name = st.text_input("如何稱呼您？", placeholder="例如: Cary")
+                level = st.selectbox("目前法語程度", ["入門級 (A1)", "初級實用 (A2)", "中級流利 (B1)", "進階商務 (B2)"])
             with c2:
-                goal = st.text_input("核心學習目標 (Goal)", placeholder="例如: 想在法國咖啡廳工作、日常數位遊牧社交")
+                goal = st.text_input("實戰核心目標", placeholder="例如: 想在法國咖啡廳或麵包店工作、數位遊牧")
             
-            interests = st.text_area("個人興趣、休閒與獨特價值觀 (Interests)", placeholder="例如: 喜歡爬山、自由潛水、滑板、聽 R&B 音樂，養了一隻五年的貓")
+            interests = st.text_area("個人休閒興趣與文化價值觀", placeholder="例如: 喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓")
             
-            submit_btn = st.form_submit_button("開通高擬真情境大廳 🔓")
+            submit_btn = st.form_submit_button("開通高流利度場景大廳 🔓")
             if submit_btn:
                 if name and goal:
-                    st.session_state.user_profile = {
+                    profile_data = {
                         "display_name": name,
                         "current_level": level,
                         "learning_goal": goal,
                         "interests": interests
                     }
-                    st.success("建模完成！已解鎖道地句型庫。")
+                    # 同步寫入記憶體與 Supabase 雲端資料庫
+                    st.session_state.user_profile = profile_data
+                    save_profile_to_supabase(profile_data)
+                    st.success("🎉 個人化檔案建模完成！已成功解鎖實戰大廳。")
                     st.rerun()
                 else:
-                    st.error("請填寫姓名與學習目標，讓 AI 能正常對接您的背景。")
+                    st.error("請至少提供您的姓名與核心學習目標。")
     
-    # 填寫完成後展現的大廳
+    # 檔案建立完成，顯示分類互動大廳
     else:
         profile = st.session_state.user_profile
-        st.subheader(f"🎯 專屬法語場景大廳 — 正在為 `{profile['display_name']}` 提供客製化流利方案")
+        st.subheader(f"🎯 專屬法語實戰大廳 — 正在為 `{profile['display_name']}` 的大腦進行語境適配")
         
-        if st.button("🔄 重設/修改個人檔案", key="reset_profile_btn"):
+        if st.button("🔄 修改個人檔案設定", key="reset_profile_btn"):
+            # 刪除暫存，觸發重新填寫
             st.session_state.user_profile = None
             st.session_state.selected_category = None
             st.rerun()
             
         st.markdown("---")
-        st.write("請選擇您目前希望應對的實戰場景：")
+        st.write("請選擇您目前希望重點攻克的法語實戰情境：")
         
-        # 建立按鈕網格
+        # 打造 4 欄按鈕矩陣佈局 (UI/UX 互動改進)
         cols = st.columns(4)
         for i, (label, key) in enumerate(CATEGORIES.items()):
             with cols[i % 4]:
@@ -285,13 +311,12 @@ with tab3:
         
         st.markdown("---")
         
-        # 渲染生成的情境句子
+        # 動態向修正後的 Gemini 後端索取高度個人化的道地句子
         if st.session_state.selected_category:
             cat_label, cat_key = st.session_state.selected_category
             st.markdown(f"### ✨ 當前探索場景：{cat_label}")
             
-            # 動態向修改後的 ai_service 撈取客製化句子
-            with st.spinner("AI 母語專家正在根據你的背景和特質，篩選巴黎當地的口語密碼..."):
+            with st.spinner("AI 專家正串接巴黎當地的口語數據庫，為你篩選核心對話..."):
                 phrases_list = ai_service.generate_phrases_by_category(cat_key, profile)
             
             if phrases_list:
@@ -300,11 +325,11 @@ with tab3:
                         col_text, col_audio, col_add = st.columns([4, 1, 1])
                         with col_text:
                             st.subheader(item.get("french_sentence", ""))
-                            st.caption(f"🎙️ 口音中文擬真：{item.get('phonetic', '')}")
-                            st.markdown(f"💡 **中文精準含意：** {item.get('chinese_translation', '')}")
+                            st.caption(f"🎙️ 發音擬真暗示：{item.get('phonetic', '')}")
+                            st.markdown(f"💡 **中文精準翻譯：** {item.get('chinese_translation', '')}")
                         
                         with col_audio:
-                            # 串接音訊引擎，讓情境句也能直接聽發音
+                            # 串接音訊引擎
                             try:
                                 audio_stream = nlp_engine.generate_audio(item.get("french_sentence", ""), lang="fr")
                                 if audio_stream:
@@ -313,17 +338,17 @@ with tab3:
                                 st.caption("語音加載中...")
                                 
                         with col_add:
-                            # 一鍵同步到 Supabase，使其可以被放進複習卡系統
+                            # 一鍵同步收藏到 vocabulary 表格
                             if st.button("📥 收藏複習", key=f"save_phrase_btn_{cat_key}_{idx}", use_container_width=True):
                                 save_phrase_to_vocabulary({
                                     "word": item.get("french_sentence", ""),
                                     "lang_code": "fr",
                                     "phonetic": item.get("phonetic", ""),
                                     "meaning": item.get("chinese_translation", ""),
-                                    "example_sentence": item.get("cultural_tip", ""),
+                                    "example_sentence": item.get("cultural_tip", ""), # 將潛規則細節存入，卡片複習時能看到
                                     "status": "review"
                                 })
                         
                         st.info(f"💬 **現代法文潛規則 (Cultural Tip)：**\n{item.get('cultural_tip', '')}")
             else:
-                st.warning("此類別生成失敗，請稍後重試。")
+                st.warning("此分類目前無法取得即時生成資料，請稍後重試。")
