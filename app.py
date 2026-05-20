@@ -123,19 +123,29 @@ def save_phrase_to_vocabulary(phrase_dict):
         st.error(f"收藏對話失敗 (請確認 vocabulary 表的 RLS 是否已關閉): {e}")
 
 def auto_save_generated_phrases_to_db(phrases_list):
-    """雲端持久化：當 Gemini 生成最新精選情境時，自動在背景以 'scenarios' 狀態落庫"""
+    """
+    ⚡ 雲端持久化升級：加上強制去重與 AI 隨機大小寫欄位自動模糊相容適配機制，
+    徹底從源頭擊碎「生成句子全部卡在同一句」的系統 bug。
+    """
     try:
+        if not phrases_list:
+            return
         for item in phrases_list:
-            sentence = item.get("french_sentence", "")
+            # 模糊相容大小寫，防止 AI 隨機調整 JSON 鍵值導致抓到空字串
+            sentence = item.get("french_sentence") or item.get("French_sentence") or ""
+            phonetic = item.get("phonetic") or item.get("Phonetic") or ""
+            meaning = item.get("chinese_translation") or item.get("meaning") or ""
+            tip = item.get("cultural_tip") or item.get("example_sentence") or ""
+            
             if sentence:
-                res = supabase.table("vocabulary").select("word").eq("word", sentence).execute()
+                res = supabase.table("vocabulary").select("word").eq("word", sentence.strip()).execute()
                 if len(res.data) == 0:
                     supabase.table("vocabulary").insert({
-                        "word": sentence,
+                        "word": sentence.strip(),
                         "lang_code": "fr",
-                        "phonetic": item.get("phonetic", ""),
-                        "meaning": item.get("chinese_translation", ""),
-                        "example_sentence": item.get("cultural_tip", ""),
+                        "phonetic": phonetic,
+                        "meaning": meaning,
+                        "example_sentence": tip,
                         "status": "scenarios" 
                     }).execute()
     except Exception:
@@ -219,16 +229,15 @@ with tab1:
                         pass
 
                 # 3. 雙軌快取皆未命中，最後才請求 Gemini (極大化節省免費額度)
-                # 🔥 防禦型新寫法：若 API 爆量，優雅提示用戶，不讓網頁崩潰
+                # 🔥 防禦型新寫法：若 API 爆量，優雅提示用戶，中斷線程不讓網頁大崩潰
                 if not data:
                     try:
                         data = ai_service.get_word_analysis(word_input)
                         if data:
                             st.session_state[word_cache_key] = data
                     except Exception as gemini_err:
-                        # 捕捉 ResourceExhausted 等 API 錯誤，給予友善提示並斷點阻斷
                         st.error("⚠️ Google AI 目前非常忙碌（免費額度已達每分鐘上限）。請稍候 1 分鐘，或者切換到「精選情境句型」點擊已有場景進行複習！")
-                        st.stop() # 停止往下執行，防止後面因為 data 是 None 而引發連鎖崩潰
+                        st.stop()
 
             # ---- 4. 確保資料取得後，執行雲端落庫與前端狀態更新 ----
             if data:
@@ -236,7 +245,6 @@ with tab1:
                 if word_input not in st.session_state.word_history:
                     st.session_state.word_history.append(word_input)
                 
-                # 同步到 Supabase 並重整更新記憶體
                 save_word_to_supabase({
                     "word": data['word'],
                     "lang_code": data['lang_code'],
@@ -268,7 +276,7 @@ with tab1:
             st.write("**語境例句：**")
             st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
 
-# ---- TAB 2：複習卡系統 (字卡輪播 - 單字與句子大混編) ----
+# ---- TAB 2：複婚卡系統 (字卡輪播 - 單字與句子大混編) ----
 with tab2:
     st.title("🗂️ 高擬真記憶字卡 (單字/情境混合複習大腦)")
     
@@ -278,22 +286,18 @@ with tab2:
         if st.session_state.current_card_index >= len(st.session_state.review_zone):
             st.session_state.current_card_index = 0
             
-        # 💡 核心優化：直接讀取完整物件字典，單字與情境對話完美融合
         current_card = st.session_state.review_zone[st.session_state.current_card_index]
         current_word = current_card.get("word", "")
 
         with st.container(border=True):
-            # 長短文本自適應排版
             font_size = "22px" if len(current_word) > 20 else "34px"
             st.markdown(f"<h3 style='text-align: center; color: #1E3A8A; font-size: {font_size};'>{current_word}</h3>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align: center;'><strong>/{current_card.get('phonetic', '')}/</strong></p>", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align: center; font-size: 1.2em; color: #374151;'>{current_card.get('meaning', '')}</p>", unsafe_allow_html=True)
             
-            # 高亮顯示文化潛規則、例句提示
             if current_card.get('example_sentence'):
                 st.info(f"💡 上下文與潛規則提示：\n{current_card['example_sentence']}")
 
-            # 字卡獨立延時語音發音按鈕 (100% 避開死鎖與 API 限流)
             c_audio, _ = st.columns([1, 4])
             with c_audio:
                 if st.button("🔊 播放發音", key=f"audio_card_{st.session_state.current_card_index}"):
@@ -316,7 +320,6 @@ with tab2:
                 if card_to_move['word'] not in [b.get('word') for b in st.session_state.brain_zone]:
                     st.session_state.brain_zone.append(card_to_move)
                 
-                # 同步更新 Supabase 資料庫中的狀態為 mastered
                 update_word_status_in_supabase(card_to_move['word'], "mastered")
                 st.session_state.current_card_index = 0
                 st.rerun()
@@ -343,9 +346,9 @@ with tab3:
                 name = st.text_input("如何稱呼您？", placeholder="例如: Cary")
                 level = st.selectbox("目前法語程度", ["入門級 (A1)", "初級實用 (A2)", "中級流利 (B1)", "進階商務 (B2)"])
             with c2:
-                goal = st.text_input("實戰核心目標", placeholder="placeholder")
+                goal = st.text_input("實戰核心目標", placeholder="例如: 想在法國咖啡廳或麵包店工作、數位遊牧")
             
-            interests = st.text_area("個人休閒興趣與文化價值觀", placeholder="placeholder")
+            interests = st.text_area("個人休閒興趣與文化價值觀", placeholder="例如: 喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓")
             
             submit_btn = st.form_submit_button("開通高流利度場景大廳 🔓")
             if submit_btn:
@@ -390,7 +393,6 @@ with tab3:
             phrases_list = []
             cache_key = f"cache_phrases_{cat_key}"
             
-            # ---- 🛡️ 雙軌快取儲存：防止情境消失與保護 Gemini API 額度 ----
             if cache_key not in st.session_state:
                 with st.spinner("AI 專家正串接巴黎當地的口語數據庫，為你篩選核心對話..."):
                     phrases_list = ai_service.generate_phrases_by_category(cat_key, profile)
@@ -401,17 +403,22 @@ with tab3:
             
             if phrases_list:
                 for idx, item in enumerate(phrases_list):
+                    # 💡 精準動態相容欄位提取，杜絕 AI 隨機 Key 回傳造成的多排句子完全重疊
+                    sentence_text = item.get("french_sentence") or item.get("French_sentence") or f"實戰句型 {idx+1}"
+                    phonetic_text = item.get("phonetic") or item.get("Phonetic") or ""
+                    translation_text = item.get("chinese_translation") or item.get("meaning") or ""
+                    tip_text = item.get("cultural_tip") or item.get("example_sentence") or ""
+                    
                     with st.container(border=True):
                         col_text, col_audio, col_add = st.columns([4, 1, 1])
                         with col_text:
-                            st.subheader(item.get("french_sentence", ""))
-                            st.caption(f"🎙️ 發音擬真暗示：{item.get('phonetic', '')}")
-                            st.markdown(f"💡 **中文精準翻譯：** {item.get('chinese_translation', '')}")
+                            st.subheader(sentence_text)
+                            st.caption(f"🎙️ 發音擬真暗示：{phonetic_text}")
+                            st.markdown(f"💡 **中文精準翻譯：** {translation_text}")
                         
-                        # 💡 核心優化：大對話全面啟用 Lazy Loading 發音按鈕，完美解鎖語音全滅與卡死
                         with col_audio:
-                            sentence_text = item.get("french_sentence", "")
-                            if st.button("🔊 發音", key=f"speak_btn_{cat_key}_{idx}"):
+                            # 💡 按需動態加載發音按鈕，加上特製 hash 盾牌，確保音訊獨立運作不混淆
+                            if st.button("🔊 發音", key=f"speak_btn_{cat_key}_{idx}_{hash(sentence_text)}"):
                                 with st.spinner(""):
                                     try:
                                         if sentence_text:
@@ -424,16 +431,16 @@ with tab3:
                                         st.caption("🎵 語音暫時離線")
                                 
                         with col_add:
-                            if st.button("📥 收藏複習", key=f"save_phrase_btn_{cat_key}_{idx}", use_container_width=True):
+                            if st.button("📥 收藏複習", key=f"save_phrase_btn_{cat_key}_{idx}_{hash(sentence_text)}", use_container_width=True):
                                 save_phrase_to_vocabulary({
-                                    "word": item.get("french_sentence", ""),
+                                    "word": sentence_text,
                                     "lang_code": "fr",
-                                    "phonetic": item.get("phonetic", ""),
-                                    "meaning": item.get("chinese_translation", ""),
-                                    "example_sentence": item.get("cultural_tip", ""), 
+                                    "phonetic": phonetic_text,
+                                    "meaning": translation_text,
+                                    "example_sentence": tip_text, 
                                     "status": "review"
                                 })
                         
-                        st.info(f"💬 **現代法文潛規則 (Cultural Tip)：**\n{item.get('cultural_tip', '')}")
+                        st.info(f"💬 **現代法文潛規則 (Cultural Tip)：**\n{tip_text}")
             else:
                 st.warning("此分類目前無法取得即時生成資料，請稍候再試。")
