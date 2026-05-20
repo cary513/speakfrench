@@ -219,7 +219,16 @@ with tab1:
                         pass
 
                 # 3. 雙軌快取皆未命中，最後才請求 Gemini (極大化節省免費額度)
-                if not data:
+                #  🔥 新的寫法：若 API 爆量，優雅提示用戶，不讓網頁崩潰
+if not data:
+    try:
+        data = ai_service.get_word_analysis(word_input)
+        if data:
+            st.session_state[word_cache_key] = data
+    except Exception as gemini_err:
+        # 捕捉 ResourceExhausted 等 API 錯誤，給予友善提示
+        st.error("⚠️ Google AI 目前非常忙碌（免費額度已達每分鐘上限）。請稍候 1 分鐘，或者切換到「精選情境句型」點擊已有場景進行複習！")
+        st.stop() # 停止往下執行，防止後面因為 data 是 None 而引發連鎖崩潰
                     data = ai_service.get_word_analysis(word_input)
                     if data:
                         st.session_state[word_cache_key] = data
