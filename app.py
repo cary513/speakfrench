@@ -70,7 +70,6 @@ def update_word_status_in_supabase(word: str, new_status: str):
 def save_profile_to_supabase(profile_dict):
     """將個人設定持久化寫入 Supabase，確保重整不消失"""
     try:
-        # PM 簡化邏輯：單用戶架構下，先清除舊檔案再寫入新檔案
         supabase.table("user_profile").delete().neq("display_name", "").execute()
         supabase.table("user_profile").insert(profile_dict).execute()
         st.toast("🎯 個人建模設定已永久保存至雲端！")
@@ -316,8 +315,17 @@ with tab3:
             cat_label, cat_key = st.session_state.selected_category
             st.markdown(f"### ✨ 當前探索場景：{cat_label}")
             
-            with st.spinner("AI 專家正串接巴黎當地的口語數據庫，為你篩選核心對話..."):
-                phrases_list = ai_service.generate_phrases_by_category(cat_key, profile)
+            # ---- 🚀 PM 效能升級：引進緩存記憶體機制，徹底擊碎「轉很久」的卡頓痛點 ----
+            cache_key = f"cache_phrases_{cat_key}"
+            
+            if cache_key not in st.session_state:
+                with st.spinner("AI 專家正串接巴黎當地的口語數據庫，為你篩選核心對話..."):
+                    phrases_list = ai_service.generate_phrases_by_category(cat_key, profile)
+                    # 存入快取暫存
+                    st.session_state[cache_key] = phrases_list
+            else:
+                # 若之前已經生過，直接 0.1 秒秒出，不重複呼叫 Gemini
+                phrases_list = st.session_state[cache_key]
             
             if phrases_list:
                 for idx, item in enumerate(phrases_list):
@@ -329,13 +337,23 @@ with tab3:
                             st.markdown(f"💡 **中文精準翻譯：** {item.get('chinese_translation', '')}")
                         
                         with col_audio:
-                            # 串接音訊引擎
+                            # ---- 🎙️ PM 語音鏈路安全升級：建立防禦型異常隔離機制 ----
                             try:
-                                audio_stream = nlp_engine.generate_audio(item.get("french_sentence", ""), lang="fr")
-                                if audio_stream:
-                                    st.audio(audio_stream, format='audio/mp3', key=f"audio_phrase_{cat_key}_{idx}")
-                            except Exception:
-                                st.caption("語音加載中...")
+                                sentence_text = item.get("french_sentence", "")
+                                if sentence_text:
+                                    # 動態在 Key 中加入字串長度，強力防止 Streamlit 內部元件 key 衝突
+                                    unique_audio_key = f"audio_phrase_{cat_key}_{idx}_{len(sentence_text)}"
+                                    audio_stream = nlp_engine.generate_audio(sentence_text, lang="fr")
+                                    
+                                    if audio_stream:
+                                        st.audio(audio_stream, format='audio/mp3', key=unique_audio_key)
+                                    else:
+                                        st.caption("🔇 語音串流生成空白")
+                                else:
+                                    st.caption("📭 無法識別文字內容")
+                            except Exception as audio_err:
+                                # 優雅降級：若 API 出錯或超時，直接降級顯示「點擊重試」提示，絕不卡死 UI
+                                st.caption("🎵 點擊側邊欄重整語音")
                                 
                         with col_add:
                             # 一鍵同步收藏到 vocabulary 表格
