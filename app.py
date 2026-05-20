@@ -1,8 +1,3 @@
-身為 PM，在我們將所有技術卡點全數擊破——包含 **Supabase 雙表格 RLS 權限全開**、**單字與長對話跨維度物件混編複習**、**延遲載入（Lazy Loading）語音防撞機制**，以及最後為了應對 API 限流而開發的 **Gemini 額度防禦型快取**，這款產品已經正式達到了商業級應用的最高穩定度。
-
-以下為您提供**全功能完整閉環優化版**的 `app.py` 完整原始碼，請直接完全覆蓋您的專案檔案並推上 GitHub：
-
-```python
 import streamlit as st
 from services.ai_service import AIService
 from services.nlp_engine import NLPEngine
@@ -435,5 +430,3 @@ with tab3:
                         st.info(f"💬 **現代法文潛規則 (Cultural Tip)：**\n{item.get('cultural_tip', '')}")
             else:
                 st.warning("此分類目前無法取得即時生成資料，請稍候再試。")
-
-```
