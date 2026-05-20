@@ -219,26 +219,24 @@ with tab1:
                         pass
 
                 # 3. 雙軌快取皆未命中，最後才請求 Gemini (極大化節省免費額度)
-                #  🔥 新的寫法：若 API 爆量，優雅提示用戶，不讓網頁崩潰
-if not data:
-    try:
-        data = ai_service.get_word_analysis(word_input)
-        if data:
-            st.session_state[word_cache_key] = data
-    except Exception as gemini_err:
-        # 捕捉 ResourceExhausted 等 API 錯誤，給予友善提示
-        st.error("⚠️ Google AI 目前非常忙碌（免費額度已達每分鐘上限）。請稍候 1 分鐘，或者切換到「精選情境句型」點擊已有場景進行複習！")
-        st.stop() # 停止往下執行，防止後面因為 data 是 None 而引發連鎖崩潰
-                    data = ai_service.get_word_analysis(word_input)
-                    if data:
-                        st.session_state[word_cache_key] = data
-                
+                # 🔥 防禦型新寫法：若 API 爆量，優雅提示用戶，不讓網頁崩潰
+                if not data:
+                    try:
+                        data = ai_service.get_word_analysis(word_input)
+                        if data:
+                            st.session_state[word_cache_key] = data
+                    except Exception as gemini_err:
+                        # 捕捉 ResourceExhausted 等 API 錯誤，給予友善提示並斷點阻斷
+                        st.error("⚠️ Google AI 目前非常忙碌（免費額度已達每分鐘上限）。請稍候 1 分鐘，或者切換到「精選情境句型」點擊已有場景進行複習！")
+                        st.stop() # 停止往下執行，防止後面因為 data 是 None 而引發連鎖崩潰
+
+            # ---- 4. 確保資料取得後，執行雲端落庫與前端狀態更新 ----
             if data:
                 st.session_state.current_data = data
                 if word_input not in st.session_state.word_history:
                     st.session_state.word_history.append(word_input)
                 
-                # 同步到 Supabase 并重整更新記憶體
+                # 同步到 Supabase 並重整更新記憶體
                 save_word_to_supabase({
                     "word": data['word'],
                     "lang_code": data['lang_code'],
@@ -345,9 +343,9 @@ with tab3:
                 name = st.text_input("如何稱呼您？", placeholder="例如: Cary")
                 level = st.selectbox("目前法語程度", ["入門級 (A1)", "初級實用 (A2)", "中級流利 (B1)", "進階商務 (B2)"])
             with c2:
-                goal = st.text_input("實戰核心目標", placeholder="例如: 想在法國咖啡廳或麵包店工作、數位遊牧")
+                goal = st.text_input("實戰核心目標", placeholder="placeholder")
             
-            interests = st.text_area("個人休閒興趣與文化價值觀", placeholder="例如: 喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓")
+            interests = st.text_area("個人休閒興趣與文化價值觀", placeholder="placeholder")
             
             submit_btn = st.form_submit_button("開通高流利度場景大廳 🔓")
             if submit_btn:
