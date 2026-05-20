@@ -60,6 +60,8 @@ class AIService:
         
         請為以下特定背景的使用者，量身打造 3 個在【{category_desc}】情境下「最道地、最常被使用、法國人聽了會心一笑」的精選法文句子。
 
+        【當前指定的實戰情境】: {category_desc}
+        
         【使用者背景檔案】
         - 稱呼/身份: {user_profile.get('display_name', 'Cary')}
         - 目前法語程度: {user_profile.get('current_level', 'A2')}
@@ -67,8 +69,8 @@ class AIService:
         - 個人興趣/休閒/價值觀: {user_profile.get('interests', '喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓')}
 
         【生成核心原則】
-        1. 拒絕死板、過時的教科書法文（例如別再只用 "Comment allez-vous?" 或 "Je vais bien"）。
-        2. 請大量使用當地人天天掛在嘴邊的慣用語（Idioms環境）、流行縮寫（例如：rando 代替 randonnée、kiffer 代替 aimer、boulot 代替 travail）。
+        1. 必須嚴格符合【當前指定的實戰場景】！如果是餐廳點菜，句子必須跟點餐、咖啡廳點單或結帳有關，絕對不能生出無關的自我介紹！
+        2. 拒絕死板、過時的教科書法文。請大量使用當地人天天掛在嘴邊的慣用語（例如：rando 代替 randonnée、kiffer 代替 aimer、boulot 代替 travail）。
         3. 語氣必須符合情境（職場適度禮貌但要實用；自我介紹與交友則要展現高度的流行口語度）。
         4. 如果是「自我介紹」或「交友與價值觀」情境，請務必精巧、自然地把用戶的特質（如：滑板、爬山、貓、R&B）融合進句子中。
 
@@ -76,23 +78,20 @@ class AIService:
         [
           {{
             "french_sentence": "法文句子內容",
-            "phonetic": "為台灣人設計的中文擬音/發音暗示（例如：惹 踢夫 特羅 拉 朗多）",
+            "phonetic": "為台灣人設計的中文擬音/發音暗示",
             "chinese_translation": "精準且流暢的台灣中文翻譯",
-            "cultural_tip": "文化與口語細節點評。詳細解釋為什麼這句在法國人聽來非常道地？使用的潛規則是什麼？"
+            "cultural_tip": "文化與口語細節點評。詳細解釋為什麼這句在法國人聽來非常道地？"
           }}
         ]
         """
 
         try:
-            # 💡 核心技術修正：統一改用類別中已經初始化好的 Gemini 模型
             response = self.model.generate_content(prompt)
             result_json = json.loads(response.text)
             
-            # 規格化檢查：確保最終輸出格式符合預期
             if isinstance(result_json, list):
                 return result_json
             elif isinstance(result_json, dict):
-                # 防錯：如果 Gemini 自動加上了外層物件鍵，動態抓出內層的 List
                 for val in result_json.values():
                     if isinstance(val, list):
                         return val
@@ -100,12 +99,35 @@ class AIService:
             
         except Exception as e:
             print(f"Gemini 情境生成錯誤: {e}")
-            # 降級備用資料 (Mock Data)，保障產品可用性防禦
-            return [
-                {
-                    "french_sentence": "Je kiffe trop la rando, ça me permet de déconnecter à fond après le boulot.",
-                    "phonetic": "惹 踢夫 特羅 拉 朗多，灑 門 辦每 德 碟口內克帖 阿 逢 阿不黑 勒 布羅",
-                    "chinese_translation": "我超愛爬山，這讓我下班後能徹底切斷繁雜思緒、好好放鬆。",
-                    "cultural_tip": "法國人極常使用 'kiffer' 代替 aimer（喜歡），'boulot' 則是 travail（工作）的口語說法。'à fond' 代表『徹底地』。這句話完美融合了你喜歡爬山的特質！"
-                }
-            ]
+            
+            # 🎯 核心技術修正：全面升級為「動態情境化降級防禦（Dynamic Mock Data）」
+            # 即使 API 被限流出錯，也根據分類回傳完全不同的精美擬真範本！
+            mock_data_pool = {
+                "restaurant": [
+                    {
+                        "french_sentence": "Je pourrais avoir un café allongé et un croissant, s'il vous plaît?",
+                        "phonetic": "熱 補黑 阿瓦 阿 卡非 阿隆日 誒 阿 誇鬆，希爾 巫 佈雷",
+                        "chinese_translation": "麻煩給我一杯美式咖啡和一個可頌，謝謝！",
+                        "cultural_tip": "在巴黎點美式咖啡，在地人老司機都講 'café allongé'（拉長咖啡），講 Americano 店員一聽就知道你是觀光客喔！"
+                    }
+                ],
+                "workplace": [
+                    {
+                        "french_sentence": "Désolé, on est un peu sous l'eau ce matin avec le coup de feu.",
+                        "phonetic": "得奏利，逢 誒 阿 補 穌 露 瑟 馬丹 阿非克 勒 菇 德 敷",
+                        "chinese_translation": "抱歉，今天早上店裡尖峰時段忙到快滅頂了。",
+                        "cultural_tip": "咖啡廳工作必備！'être sous l'eau'（在水面下）是形容工作量大到快溺水、忙不過來。'le coup de feu' 則是餐飲業形容客人突然爆滿的尖峰期。"
+                    }
+                ],
+                "self_intro": [
+                    {
+                        "french_sentence": "Je kiffe trop la rando, ça me permet de déconnecter à fond après le boulot.",
+                        "phonetic": "惹 踢夫 特羅 拉 朗多，灑 門 辦每 德 碟口內克帖 阿 逢 阿不黑 勒 布羅",
+                        "chinese_translation": "我超愛爬山，這讓我下班後能徹底切斷繁雜思緒、好好放鬆。",
+                        "cultural_tip": "法國人極常使用 'kiffer' 代替 aimer（喜歡），'boulot' 則是工作。這句話完美融入了你喜歡爬山的自我介紹！"
+                    }
+                ]
+            }
+            
+            # 根據前端選的 key 回傳對應範本，其餘未寫的預設回傳 self_intro
+            return mock_data_pool.get(category_key, mock_data_pool["self_intro"])
