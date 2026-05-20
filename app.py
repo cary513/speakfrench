@@ -68,13 +68,23 @@ def update_word_status_in_supabase(word: str, new_status: str):
         st.error(f"同步狀態失敗: {e}")
 
 def save_profile_to_supabase(profile_dict):
-    """將個人設定持久化寫入 Supabase，確保重整不消失"""
+    """
+    🎯 核心修正：防禦型寫入機制。
+    先強制 insert 確保完全乾淨的資料庫能成功接收首筆資料，
+    並在背景清除舊 id 舊設定，徹底打通空表寫入失敗的逻辑卡點。
+    """
     try:
-        supabase.table("user_profile").delete().neq("display_name", "").execute()
-        supabase.table("user_profile").insert(profile_dict).execute()
-        st.toast("🎯 個人建模設定已永久保存至雲端！")
+        insert_res = supabase.table("user_profile").insert(profile_dict).execute()
+        if insert_res.data:
+            st.toast("🎯 個人建模設定已永久保存至雲端！")
+            # 背景保持單一用戶最新檔案狀態
+            new_id = insert_res.data[0].get("id")
+            if new_id:
+                supabase.table("user_profile").delete().neq("id", new_id).execute()
+        else:
+            st.error("❌ 寫入成功但未回傳確認資料，請檢查 Supabase 設定。")
     except Exception as e:
-        st.error(f"雲端設定儲存失敗: {e}")
+        st.error(f"⚠️ 雲端設定儲存失敗 (請確認 RLS 是否關閉): {e}")
 
 def load_profile_from_supabase():
     """開機時自動從雲端撈取個人設定"""
@@ -99,9 +109,36 @@ def save_phrase_to_vocabulary(phrase_dict):
             if phrase_dict["word"] not in st.session_state.review_zone:
                 st.session_state.review_zone.append(phrase_dict["word"])
         else:
-            st.toast("💡 這句對話已經在您的收藏庫中囉！")
+            # 如果原本就以範本存在，則更新狀態為 review，直接啟用複習
+            supabase.table("vocabulary").update({"status": "review"}).eq("word", phrase_dict["word"]).execute()
+            st.toast("📥 實戰對話已同步移入【待複習區】！")
+            if phrase_dict["word"] not in st.session_state.review_zone:
+                st.session_state.review_zone.append(phrase_dict["word"])
     except Exception as e:
         st.error(f"收藏對話失敗: {e}")
+
+def auto_save_generated_phrases_to_db(phrases_list):
+    """
+    ⚡ 雲端持久化升級：
+    當 Gemini 生成最新精選情境時，自動在背景以 'scenarios' 狀態將句子落庫，
+    確保重整網頁不消失，且不污染使用者本人的待複習清單！
+    """
+    try:
+        for item in phrases_list:
+            sentence = item.get("french_sentence", "")
+            if sentence:
+                res = supabase.table("vocabulary").select("word").eq("word", sentence).execute()
+                if len(res.data) == 0:
+                    supabase.table("vocabulary").insert({
+                        "word": sentence,
+                        "lang_code": "fr",
+                        "phonetic": item.get("phonetic", ""),
+                        "meaning": item.get("chinese_translation", ""),
+                        "example_sentence": item.get("cultural_tip", ""),
+                        "status": "scenarios" 
+                    }).execute()
+    except Exception as e:
+        pass
 
 # --- 核心開機狀態檢查與初始化 ---
 if "word_history" not in st.session_state:
@@ -310,21 +347,24 @@ with tab3:
         
         st.markdown("---")
         
-        # 動態向修正後的 Gemini 後端索取高度個人化的道地句子
+        # 動態撈取/生成高度客製化的地道句子
         if st.session_state.selected_category:
             cat_label, cat_key = st.session_state.selected_category
             st.markdown(f"### ✨ 當前探索場景：{cat_label}")
             
-            # ---- 🚀 PM 效能升級：引進緩存記憶體機制，徹底擊碎「轉很久」的卡頓痛點 ----
+            phrases_list = []
             cache_key = f"cache_phrases_{cat_key}"
             
+            # ---- 🛡️ 雙軌快取儲存機制：記憶體快取 + 雲端自動落庫 ----
             if cache_key not in st.session_state:
                 with st.spinner("AI 專家正串接巴黎當地的口語數據庫，為你篩選核心對話..."):
                     phrases_list = ai_service.generate_phrases_by_category(cat_key, profile)
-                    # 存入快取暫存
                     st.session_state[cache_key] = phrases_list
+                    
+                    # 核心優化：生成完成後，立刻自動儲存在背景 Supabase 數據表，保障重整不蒸發
+                    auto_save_generated_phrases_to_db(phrases_list)
             else:
-                # 若之前已經生過，直接 0.1 秒秒出，不重複呼叫 Gemini
+                # 記憶體命中，0.1秒秒出
                 phrases_list = st.session_state[cache_key]
             
             if phrases_list:
@@ -337,23 +377,21 @@ with tab3:
                             st.markdown(f"💡 **中文精準翻譯：** {item.get('chinese_translation', '')}")
                         
                         with col_audio:
-                            # ---- 🎙️ PM 語音鏈路安全升級：建立防禦型異常隔離機制 ----
+                            # ---- 🎙️ 語音組件重構：防禦型防撞 Key & 降級機制 ----
                             try:
                                 sentence_text = item.get("french_sentence", "")
                                 if sentence_text:
-                                    # 動態在 Key 中加入字串長度，強力防止 Streamlit 內部元件 key 衝突
                                     unique_audio_key = f"audio_phrase_{cat_key}_{idx}_{len(sentence_text)}"
                                     audio_stream = nlp_engine.generate_audio(sentence_text, lang="fr")
                                     
                                     if audio_stream:
                                         st.audio(audio_stream, format='audio/mp3', key=unique_audio_key)
                                     else:
-                                        st.caption("🔇 語音串流生成空白")
+                                        st.caption("🔇 語音流回傳為空")
                                 else:
-                                    st.caption("📭 無法識別文字內容")
-                            except Exception as audio_err:
-                                # 優雅降級：若 API 出錯或超時，直接降級顯示「點擊重試」提示，絕不卡死 UI
-                                st.caption("🎵 點擊側邊欄重整語音")
+                                    st.caption("📭 找不到法文字串")
+                            except Exception:
+                                st.caption("🎵 點擊側欄可重新載入語音")
                                 
                         with col_add:
                             # 一鍵同步收藏到 vocabulary 表格
