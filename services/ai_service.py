@@ -8,41 +8,60 @@ class AIService:
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("AIService: 未偵測到 GOOGLE_API_KEY 環境變數")
-        
+       
         # 2. 顯式配置 Google GenAI SDK
         genai.configure(api_key=api_key)
-        
-        # 3. 初始化清單中支援的模型 (並強制回傳 JSON)
+       
+        # 3. 初始化模型（強制回傳 JSON）
         self.model = genai.GenerativeModel(
             model_name="models/gemini-2.5-flash",
             generation_config={"response_mime_type": "application/json"}
         )
-        
+       
     def get_word_analysis(self, word):
         system_prompt = """
-        你是一位專業語言學教授。分析單字並回傳 JSON 格式：
-        {
-            "word": "string",
-            "lang_code": "en/fr",
-            "phonetic": "IPA",
-            "meaning": "繁體中文解釋",
-            "example_sentence": "例句",
-            "sentence_translation": "例句翻譯"
-        }
-        """
+你是一位專業的語言學教授，專門協助台灣學習者學習英語與法語。
+
+請分析使用者輸入的單字，並嚴格回傳以下 JSON 格式（不要有其他多餘文字）：
+
+{
+    "word": "原始單字（請修正明顯拼寫錯誤）",
+    "lang_code": "en 或 fr",
+    "phonetic": "IPA 音標",
+    "meaning": "繁體中文核心解釋（簡潔清楚）",
+    "example_sentence": "一個自然、實用的例句（長度適中，適合朗讀練習）",
+    "sentence_translation": "例句的繁體中文翻譯"
+}
+
+注意事項：
+1. 如果輸入有明顯拼寫錯誤，請自動修正後再分析。
+2. 必須完整回傳上述所有欄位，不可缺少或回傳空值。
+3. 絕對不要回傳 "Ellipsis" 或其他無意義的字。
+"""
         user_prompt = f"請分析單字：{word}"
-        
+       
         try:
             response = self.model.generate_content([system_prompt, user_prompt])
-            return json.loads(response.text)
-        except json.JSONDecodeError:
+            raw_text = response.text.strip()
+            
+            data = json.loads(raw_text)
+            
+            # 防呆檢查
+            required_keys = ["word", "lang_code", "phonetic", "meaning", "example_sentence", "sentence_translation"]
+            for key in required_keys:
+                if key not in data or not str(data[key]).strip() or str(data[key]).strip().lower() == "ellipsis":
+                    return None
+                    
+            return data
+           
+        except Exception as e:
+            print(f"get_word_analysis 錯誤: {e}")
             return None
 
     def generate_phrases_by_category(self, category_key: str, user_profile: dict) -> list:
         """
-        根據使用者的個人資訊與指定情境類別，使用 Gemini 2.5 生成 3 個最道地的法文句子。
+        根據使用者的個人資訊與指定情境類別，使用 Gemini 生成 3 個最道地的法文句子。
         """
-        # 定義情境對照（提供給 AI 更好的語境脈絡）
         category_mapping = {
             "workplace": "職場用語（如：同事交流、面試、工作匯報、咖啡廳或麵包店實務交談）",
             "daily": "日常生活（如：市集買菜、咖啡廳點單、路上問路、與鄰居打招呼）",
@@ -52,43 +71,40 @@ class AIService:
             "self_intro": "自我介紹（如：新朋友見面、向社團介紹自己，須自然融入用戶興趣）",
             "social": "交友、興趣與價值觀交流（如：小酒館聊天、探討休閒活動、分享個人觀點）"
         }
-        
+       
         category_desc = category_mapping.get(category_key, category_key)
-
         prompt = f"""
-        你是一位精通現代法語的母語專家，特別擅長觀察法國（尤其是巴黎）年輕一代的日常口語、流行縮寫（Slang/Verlan）與職場實用對話。
-        
-        請為以下特定背景的使用者，量身打造 3 個在【{category_desc}】情境下「最道地、最常被使用、法國人聽了會心一笑」的精選法文句子。
+你是一位精通現代法語的母語專家，特別擅長觀察法國（尤其是巴黎）年輕一代的日常口語、流行縮寫（Slang/Verlan）與職場實用對話。
+       
+請為以下特定背景的使用者，量身打造 3 個在【{category_desc}】情境下「最道地、最常被使用、法國人聽了會心一笑」的精選法文句子。
+【當前指定的實戰情境】: {category_desc}
+       
+【使用者背景檔案】
+- 稱呼/身份: {user_profile.get('display_name', 'Cary')}
+- 目前法語程度: {user_profile.get('current_level', 'A2')}
+- 核心學習目標: {user_profile.get('learning_goal', '在法國咖啡廳或麵包店工作、文化探索')}
+- 個人興趣/休閒/價值觀: {user_profile.get('interests', '喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓')}
 
-        【當前指定的實戰情境】: {category_desc}
-        
-        【使用者背景檔案】
-        - 稱呼/身份: {user_profile.get('display_name', 'Cary')}
-        - 目前法語程度: {user_profile.get('current_level', 'A2')}
-        - 核心學習目標: {user_profile.get('learning_goal', '在法國咖啡廳或麵包店工作、文化探索')}
-        - 個人興趣/休閒/價值觀: {user_profile.get('interests', '喜歡爬山、自由潛水、滑板、聽 R&B 音樂，有一隻養了五年的貓')}
+【生成核心原則】
+1. 必須嚴格符合【當前指定的實戰場景】！
+2. 拒絕死板、過時的教科書法文。請大量使用當地人天天掛在嘴邊的慣用語。
+3. 語氣必須符合情境。
+4. 如果是「自我介紹」或「交友與價值觀」情境，請務必精巧、自然地把用戶的特質融合進句子中。
 
-        【生成核心原則】
-        1. 必須嚴格符合【當前指定的實戰場景】！如果是餐廳點菜，句子必須跟點餐、咖啡廳點單或結帳有關，絕對不能生出無關的自我介紹！
-        2. 拒絕死板、過時的教科書法文。請大量使用當地人天天掛在嘴邊的慣用語（例如：rando 代替 randonnée、kiffer 代替 aimer、boulot 代替 travail）。
-        3. 語氣必須符合情境（職場適度禮貌但要實用；自我介紹與交友則要展現高度的流行口語度）。
-        4. 如果是「自我介紹」或「交友與價值觀」情境，請務必精巧、自然地把用戶的特質（如：滑板、爬山、貓、R&B）融合進句子中。
-
-        請嚴格遵循以下 JSON 陣列格式回傳，確保根目錄直接是一個 Array：
-        [
-          {{
-            "french_sentence": "法文句子內容",
-            "phonetic": "為台灣人設計的中文擬音/發音暗示",
-            "chinese_translation": "精準且流暢的台灣中文翻譯",
-            "cultural_tip": "文化與口語細節點評。詳細解釋為什麼這句在法國人聽來非常道地？"
-          }}
-        ]
-        """
-
+請嚴格遵循以下 JSON 陣列格式回傳：
+[
+  {{
+    "french_sentence": "法文句子內容",
+    "phonetic": "為台灣人設計的中文擬音/發音暗示",
+    "chinese_translation": "精準且流暢的台灣中文翻譯",
+    "cultural_tip": "文化與口語細節點評。詳細解釋為什麼這句在法國人聽來非常道地？"
+  }}
+]
+"""
         try:
             response = self.model.generate_content(prompt)
             result_json = json.loads(response.text)
-            
+           
             if isinstance(result_json, list):
                 return result_json
             elif isinstance(result_json, dict):
@@ -96,12 +112,11 @@ class AIService:
                     if isinstance(val, list):
                         return val
             return []
-            
+           
         except Exception as e:
             print(f"Gemini 情境生成錯誤: {e}")
-            
-            # 🎯 核心技術修正：全面升級為「動態情境化降級防禦（Dynamic Mock Data）」
-            # 即使 API 被限流出錯，也根據分類回傳完全不同的精美擬真範本！
+           
+            # 動態情境化降級防禦
             mock_data_pool = {
                 "restaurant": [
                     {
@@ -128,6 +143,5 @@ class AIService:
                     }
                 ]
             }
-            
-            # 根據前端選的 key 回傳對應範本，其餘未寫的預設回傳 self_intro
+           
             return mock_data_pool.get(category_key, mock_data_pool["self_intro"])
