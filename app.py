@@ -260,11 +260,129 @@ with tab1:
     if "current_data" in st.session_state:
         data = st.session_state.current_data
         with st.container(border=True):
-            ...
-            st.write("**語境例句：**")
-            st.info(...)
-            # 🔊 例句發音
-            ...        
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.subheader(f"{data['word']} /{data['phonetic']}/ ({data['lang_code']})")
+            with col2:
+                try:
+                    audio_stream = nlp_engine.generate_audio(data['word'], lang=data['lang_code'])
+                    if audio_stream:
+                        st.audio(audio_stream, format='audio/mp3')
+                except Exception:
+                    st.warning("語音生成系統暫時離線")
+            
+            st.write(f"**核心釋義：** {data['meaning']}")
+            st.markdown("---")
+            
+            # ========== 語境例句 + 點擊單字顯示註解 ==========
+            st.write("**語境例句：**（點擊下方單字可查看詳細註解）")
+            st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
+
+            # 🔊 整句發音
+            if data.get('example_sentence'):
+                if st.button("🔊 播放整句發音", key="example_sentence_audio"):
+                    with st.spinner("🎵 調音中..."):
+                        try:
+                            audio_stream = nlp_engine.generate_audio(
+                                data['example_sentence'],
+                                lang=data.get('lang_code', 'fr')
+                            )
+                            if audio_stream:
+                                st.audio(audio_stream, format='audio/mp3')
+                            else:
+                                st.caption("🔇 語音流為空")
+                        except Exception:
+                            st.warning("語音生成系統暫時離線")
+
+            # 把例句拆成單字做成可點擊按鈕
+            import re
+            sentence = data.get('example_sentence', '')
+            words = re.findall(r"\b[\w'-]+\b", sentence)
+            
+            if words:
+                st.caption("點擊單字查看解釋：")
+                cols = st.columns(min(len(words), 6))
+                for i, w in enumerate(words):
+                    with cols[i % 6]:
+                        if st.button(w, key=f"click_word_{data['word']}_{i}_{w}"):
+                            st.session_state.clicked_explain_word = w
+                            st.session_state.clicked_explain_lang = data.get('lang_code', 'fr')
+
+            # 顯示被點擊單字的藍色註解框
+            if "clicked_explain_word" in st.session_state:
+                explain_word = st.session_state.clicked_explain_word
+                explain_lang = st.session_state.get('clicked_explain_lang', 'fr')
+                
+                cache_key = f"word_cache_{explain_word.strip().lower()}"
+                explain_data = st.session_state.get(cache_key)
+                
+                # 1. Session 沒有 → 先查 Supabase
+                if not explain_data:
+                    try:
+                        db_res = supabase.table("vocabulary").select("*").eq("word", explain_word.strip()).execute()
+                        if db_res.data:
+                            db_item = db_res.data[0]
+                            explain_data = {
+                                "word": db_item["word"],
+                                "lang_code": db_item.get("lang_code", "fr"),
+                                "phonetic": db_item.get("phonetic", ""),
+                                "meaning": db_item.get("meaning", ""),
+                                "example_sentence": db_item.get("example_sentence", ""),
+                                "sentence_translation": ""
+                            }
+                            st.session_state[cache_key] = explain_data
+                    except Exception:
+                        pass
+                
+                # 2. 還是沒有 → 才呼叫 Gemini
+                if not explain_data:
+                    with st.spinner(f"正在分析「{explain_word}」..."):
+                        try:
+                            explain_data = ai_service.get_word_analysis(explain_word)
+                            if explain_data:
+                                st.session_state[cache_key] = explain_data
+                                # 同步存進 Supabase
+                                save_word_to_supabase({
+                                    "word": explain_data['word'],
+                                    "lang_code": explain_data['lang_code'],
+                                    "phonetic": explain_data['phonetic'],
+                                    "meaning": explain_data['meaning'],
+                                    "example_sentence": explain_data['example_sentence'],
+                                    "status": "review"
+                                })
+                        except Exception:
+                            explain_data = None
+                
+                # 顯示藍色註解框
+                if explain_data:
+                    st.markdown(
+                        f"""
+                        <div style="
+                            background-color: #3B82F6;
+                            color: white;
+                            padding: 14px 18px;
+                            border-radius: 12px;
+                            margin-top: 12px;
+                            line-height: 1.6;
+                            font-size: 15px;
+                        ">
+                            <strong style="font-size:17px;">{explain_data['word']}</strong><br>
+                            {explain_data['meaning']}<br><br>
+                            <span style="opacity:0.9;">例句用法參考：{explain_data.get('example_sentence', '')}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    if st.button(f"🔊 播放「{explain_word}」發音", key=f"audio_explain_{explain_word}"):
+                        try:
+                            audio_stream = nlp_engine.generate_audio(explain_word, lang=explain_lang)
+                            if audio_stream:
+                                st.audio(audio_stream, format='audio/mp3')
+                        except Exception:
+                            st.warning("語音暫時無法播放")
+                else:
+                    st.warning(f"無法取得「{explain_word}」的解釋，請稍後再試。")     
 # ---- TAB 2：複婚卡系統 (字卡輪播 - 單字與句子大混編) ----
 with tab2:
     st.title("🗂️ 高擬真記憶字卡 (單字/情境混合複習大腦)")
