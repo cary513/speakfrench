@@ -257,61 +257,40 @@ with tab1:
             else:
                 st.error("單字分析失敗，可能是 Google AI 額度已達上限，請稍候 1 分鐘再試。")
 
-  if "current_data" in st.session_state:
-    data = st.session_state.current_data
-    with st.container(border=True):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.subheader(f"{data['word']} /{data['phonetic']}/ ({data['lang_code']})")
-        with col2:
-            try:
-                audio_stream = nlp_engine.generate_audio(data['word'], lang=data['lang_code'])
-                if audio_stream:
-                    st.audio(audio_stream, format='audio/mp3')
-            except Exception:
-                st.warning("語音生成系統暫時離線")
-       
-        st.write(f"**核心釋義：** {data['meaning']}")
-        st.markdown("---")
-        st.write("**語境例句：**")
-        st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
-
-        # 🔊 新增：例句也支援發音
-        if data.get('example_sentence'):
-            if st.button("🔊 播放例句發音", key="example_sentence_audio"):
-                with st.spinner("🎵 調音中..."):
-                    try:
-                        audio_stream = nlp_engine.generate_audio(
-                            data['example_sentence'], 
-                            lang=data.get('lang_code', 'fr')
-                        )
-                        if audio_stream:
-                            st.audio(audio_stream, format='audio/mp3')
-                        else:
-                            st.caption("🔇 語音流為空")
-                    except Exception:
-                        st.warning("語音生成系統暫時離線")
+    if "current_data" in st.session_state:
+        data = st.session_state.current_data
+        with st.container(border=True):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.subheader(f"{data['word']} /{data['phonetic']}/ ({data['lang_code']})")
+            with col2:
+                try:
+                    audio_stream = nlp_engine.generate_audio(data['word'], lang=data['lang_code'])
+                    if audio_stream:
+                        st.audio(audio_stream, format='audio/mp3')
+                except Exception:
+                    st.warning("語音生成系統暫時離線")
             
             st.write(f"**核心釋義：** {data['meaning']}")
             st.markdown("---")
             st.write("**語境例句：**")
-st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
+            st.info(f"{data['example_sentence']}\n\n*{data.get('sentence_translation', '')}*")
 
-# 🔊 新增：例句發音
-if data.get('example_sentence'):
-    if st.button("🔊 播放例句發音", key="example_sentence_audio"):
-        with st.spinner("🎵 調音中..."):
-            try:
-                audio_stream = nlp_engine.generate_audio(
-                    data['example_sentence'], 
-                    lang=data.get('lang_code', 'fr')
-                )
-                if audio_stream:
-                    st.audio(audio_stream, format='audio/mp3')
-                else:
-                    st.caption("🔇 語音流為空")
-            except Exception:
-                st.warning("語音生成系統暫時離線")
+            # 🔊 例句發音
+            if data.get('example_sentence'):
+                if st.button("🔊 播放例句發音", key="example_sentence_audio"):
+                    with st.spinner("🎵 調音中..."):
+                        try:
+                            audio_stream = nlp_engine.generate_audio(
+                                data['example_sentence'],
+                                lang=data.get('lang_code', 'fr')
+                            )
+                            if audio_stream:
+                                st.audio(audio_stream, format='audio/mp3')
+                            else:
+                                st.caption("🔇 語音流為空")
+                        except Exception:
+                            st.warning("語音生成系統暫時離線")
                 
 # ---- TAB 2：複婚卡系統 (字卡輪播 - 單字與句子大混編) ----
 with tab2:
