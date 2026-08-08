@@ -6,7 +6,7 @@ from supabase import create_client, Client
 # ==========================================
 # 1. 頁面與服務初始化 (Initialization)
 # ==========================================
-st.set_page_config(page_title="AI 語言學習分析工具 V2", layout="wide")
+st.set_page_config(page_title="AI 語言學習工具 V2", layout="wide")
 
 @st.cache_resource
 def init_supabase() -> Client:
