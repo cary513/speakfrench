@@ -197,7 +197,7 @@ tab1, tab2, tab3 = st.tabs(["🔍 單字查詢", "🗂️ 複習卡 (Flashcards)
 
 # ---- TAB 1：單字查詢分析 ----
 with tab1:
-    st.title("單字多維度分析探索")
+    st.title("語言小天才")
     word_input = st.text_input("輸入單字（自動辨識英文/法文）", placeholder="例如: l'innovation", key="main_input")
     
     if st.button("開始分析", key="analyze_btn"):
