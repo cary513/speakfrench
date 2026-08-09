@@ -193,7 +193,12 @@ with st.sidebar:
 # ==========================================
 # 4. 主畫面 (Main Application Workspace)
 # ==========================================
-tab1, tab2, tab3 = st.tabs(["🔍 單字查詢", "🗂️ 複習卡 (Flashcards)", "🚀 精選情境句型"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🔍 單字查詢", 
+    "🗂️ 複習卡 (Flashcards)", 
+    "🚀 精選情境句型",
+    "📝 A2 刷題"
+])
 
 # ---- TAB 1：單字查詢分析 ----
 with tab1:
@@ -551,3 +556,141 @@ with tab3:
                         st.info(f"💬 **現代法文潛規則 (Cultural Tip)：**\n{tip_text}")
             else:
                 st.warning("此分類目前無法取得即時生成資料，請稍候再試。")
+
+# ---- TAB 4：A2 刷題 ----
+with tab4:
+    st.title("📝 DELF A2 刷題練習")
+    st.caption("目前題庫來自 AI 生成 + 官方風格練習題，可持續擴充")
+
+    # 初始化狀態
+    if "quiz_index" not in st.session_state:
+        st.session_state.quiz_index = 0
+    if "quiz_questions" not in st.session_state:
+        st.session_state.quiz_questions = []
+    if "quiz_score" not in st.session_state:
+        st.session_state.quiz_score = 0
+    if "quiz_answered" not in st.session_state:
+        st.session_state.quiz_answered = False
+    if "quiz_selected_skill" not in st.session_state:
+        st.session_state.quiz_selected_skill = "全部"
+
+    # 選擇技能
+    skill_options = {
+        "全部": None,
+        "閱讀 Reading": "reading",
+        "聽力 Listening": "listening",
+        "寫作 Writing": "writing",
+        "口說 Speaking": "speaking"
+    }
+    
+    selected_label = st.selectbox(
+        "選擇練習技能",
+        options=list(skill_options.keys()),
+        key="skill_selector"
+    )
+    selected_skill = skill_options[selected_label]
+
+    # 載入題目按鈕
+    if st.button("開始刷題 / 換一批題目", type="primary"):
+        try:
+            query = supabase.table("quiz_questions").select("*").eq("is_active", True)
+            if selected_skill:
+                query = query.eq("skill", selected_skill)
+            
+            res = query.execute()
+            questions = res.data or []
+            
+            if not questions:
+                st.warning("目前這個分類還沒有題目，請先新增題目。")
+            else:
+                # 簡單隨機抽最多 10 題
+                import random
+                random.shuffle(questions)
+                st.session_state.quiz_questions = questions[:10]
+                st.session_state.quiz_index = 0
+                st.session_state.quiz_score = 0
+                st.session_state.quiz_answered = False
+                st.rerun()
+        except Exception as e:
+            st.error(f"載入題目失敗：{e}")
+
+    # 顯示目前題目
+    questions = st.session_state.quiz_questions
+    
+    if not questions:
+        st.info("請先選擇技能並點擊「開始刷題」")
+    else:
+        current_idx = st.session_state.quiz_index
+        
+        if current_idx >= len(questions):
+            st.success(f"🎉 本輪練習結束！你答對了 {st.session_state.quiz_score} / {len(questions)} 題")
+            if st.button("再練一次"):
+                st.session_state.quiz_index = 0
+                st.session_state.quiz_score = 0
+                st.session_state.quiz_answered = False
+                st.rerun()
+        else:
+            q = questions[current_idx]
+            
+            st.markdown(f"**題目 {current_idx + 1} / {len(questions)}**")
+            st.markdown(f"**技能：** {q.get('skill', '')}　|　**主題：** {q.get('topic', '')}")
+            st.markdown("---")
+            st.write(q.get("question_text", ""))
+
+            # 根據題型顯示作答區
+            user_answer = None
+            
+            if q.get("question_type") == "mcq":
+                options = q.get("options") or []
+                if isinstance(options, str):
+                    import json
+                    try:
+                        options = json.loads(options)
+                    except:
+                        options = []
+                
+                user_answer = st.radio(
+                    "請選擇答案：",
+                    options=options,
+                    key=f"answer_{current_idx}"
+                )
+            else:
+                # 開放題
+                user_answer = st.text_area(
+                    "請輸入你的回答（寫作/口說可先打字練習）：",
+                    key=f"answer_{current_idx}",
+                    height=100
+                )
+
+            # 提交答案
+            if not st.session_state.quiz_answered:
+                if st.button("提交答案", key=f"submit_{current_idx}"):
+                    st.session_state.quiz_answered = True
+                    
+                    correct = q.get("correct_answer", "")
+                    
+                    # 簡單判斷（選擇題較準，開放題只顯示範例）
+                    if q.get("question_type") == "mcq":
+                        if user_answer == correct:
+                            st.session_state.quiz_score += 1
+                            st.success("✅ 答對了！")
+                        else:
+                            st.error(f"❌ 答錯了。正確答案是：{correct}")
+                    else:
+                        st.info("開放題沒有標準對錯，請參考下方範例與解析。")
+                    
+                    st.markdown("### 解析")
+                    st.write(q.get("explanation", "暫無解析"))
+                    
+                    if q.get("question_type") != "mcq":
+                        st.markdown("**參考答案：**")
+                        st.write(correct)
+            else:
+                # 已經回答過，顯示下一題按鈕
+                st.markdown("### 解析")
+                st.write(q.get("explanation", "暫無解析"))
+                
+                if st.button("下一題 →", key=f"next_{current_idx}"):
+                    st.session_state.quiz_index += 1
+                    st.session_state.quiz_answered = False
+                    st.rerun()
