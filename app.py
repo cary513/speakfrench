@@ -636,6 +636,32 @@ with tab4:
             st.markdown(f"**技能：** {q.get('skill', '')}　|　**主題：** {q.get('topic', '')}")
             st.markdown("---")
             st.write(q.get("question_text", ""))
+            # 🔊 聽力題增加發音
+if q.get("skill") == "listening":
+    # 嘗試從題目文字中抽出法文句子（簡單處理）
+    import re
+    french_parts = re.findall(r"[«「]?([A-Za-zÀ-ÿœæç''. ?!,;:]+)[»」]?", q.get("question_text", ""))
+    
+    # 如果有找到較長的法文片段，就提供播放
+    playable_text = None
+    for part in french_parts:
+        if len(part.strip()) > 15:  # 過濾太短的片段
+            playable_text = part.strip()
+            break
+    
+    if playable_text:
+        if st.button("🔊 播放聽力內容", key=f"listen_audio_{current_idx}"):
+            with st.spinner("🎵 產生發音中..."):
+                try:
+                    audio_stream = nlp_engine.generate_audio(playable_text, lang="fr")
+                    if audio_stream:
+                        st.audio(audio_stream, format="audio/mp3")
+                    else:
+                        st.caption("無法產生音訊")
+                except Exception:
+                    st.warning("語音生成暫時無法使用")
+    else:
+        st.caption("（此題暫無法自動擷取可播放的法文句子）")
 
             # 根據題型顯示作答區
             user_answer = None
