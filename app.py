@@ -571,8 +571,6 @@ with tab4:
         st.session_state.quiz_score = 0
     if "quiz_answered" not in st.session_state:
         st.session_state.quiz_answered = False
-    if "quiz_selected_skill" not in st.session_state:
-        st.session_state.quiz_selected_skill = "全部"
 
     # 選擇技能
     skill_options = {
@@ -582,7 +580,7 @@ with tab4:
         "寫作 Writing": "writing",
         "口說 Speaking": "speaking"
     }
-    
+   
     selected_label = st.selectbox(
         "選擇練習技能",
         options=list(skill_options.keys()),
@@ -596,14 +594,13 @@ with tab4:
             query = supabase.table("quiz_questions").select("*").eq("is_active", True)
             if selected_skill:
                 query = query.eq("skill", selected_skill)
-            
+           
             res = query.execute()
             questions = res.data or []
-            
+           
             if not questions:
                 st.warning("目前這個分類還沒有題目，請先新增題目。")
             else:
-                # 簡單隨機抽最多 10 題
                 import random
                 random.shuffle(questions)
                 st.session_state.quiz_questions = questions[:10]
@@ -616,12 +613,12 @@ with tab4:
 
     # 顯示目前題目
     questions = st.session_state.quiz_questions
-    
+   
     if not questions:
         st.info("請先選擇技能並點擊「開始刷題」")
     else:
         current_idx = st.session_state.quiz_index
-        
+       
         if current_idx >= len(questions):
             st.success(f"🎉 本輪練習結束！你答對了 {st.session_state.quiz_score} / {len(questions)} 題")
             if st.button("再練一次"):
@@ -631,41 +628,43 @@ with tab4:
                 st.rerun()
         else:
             q = questions[current_idx]
-            
+           
             st.markdown(f"**題目 {current_idx + 1} / {len(questions)}**")
             st.markdown(f"**技能：** {q.get('skill', '')}　|　**主題：** {q.get('topic', '')}")
             st.markdown("---")
             st.write(q.get("question_text", ""))
+
             # 🔊 聽力題增加發音
-if q.get("skill") == "listening":
-    # 嘗試從題目文字中抽出法文句子（簡單處理）
-    import re
-    french_parts = re.findall(r"[«「]?([A-Za-zÀ-ÿœæç''. ?!,;:]+)[»」]?", q.get("question_text", ""))
-    
-    # 如果有找到較長的法文片段，就提供播放
-    playable_text = None
-    for part in french_parts:
-        if len(part.strip()) > 15:  # 過濾太短的片段
-            playable_text = part.strip()
-            break
-    
-    if playable_text:
-        if st.button("🔊 播放聽力內容", key=f"listen_audio_{current_idx}"):
-            with st.spinner("🎵 產生發音中..."):
-                try:
-                    audio_stream = nlp_engine.generate_audio(playable_text, lang="fr")
-                    if audio_stream:
-                        st.audio(audio_stream, format="audio/mp3")
-                    else:
-                        st.caption("無法產生音訊")
-                except Exception:
-                    st.warning("語音生成暫時無法使用")
-    else:
-        st.caption("（此題暫無法自動擷取可播放的法文句子）")
+            if q.get("skill") == "listening":
+                import re
+                french_parts = re.findall(
+                    r"[«「]?([A-Za-zÀ-ÿœæç''. ?!,;:]+)[»」]?",
+                    q.get("question_text", "")
+                )
+                
+                playable_text = None
+                for part in french_parts:
+                    if len(part.strip()) > 15:
+                        playable_text = part.strip()
+                        break
+                
+                if playable_text:
+                    if st.button("🔊 播放聽力內容", key=f"listen_audio_{current_idx}"):
+                        with st.spinner("🎵 產生發音中..."):
+                            try:
+                                audio_stream = nlp_engine.generate_audio(playable_text, lang="fr")
+                                if audio_stream:
+                                    st.audio(audio_stream, format="audio/mp3")
+                                else:
+                                    st.caption("無法產生音訊")
+                            except Exception:
+                                st.warning("語音生成暫時無法使用")
+                else:
+                    st.caption("（此題暫無法自動擷取可播放的法文句子）")
 
             # 根據題型顯示作答區
             user_answer = None
-            
+           
             if q.get("question_type") == "mcq":
                 options = q.get("options") or []
                 if isinstance(options, str):
@@ -674,14 +673,13 @@ if q.get("skill") == "listening":
                         options = json.loads(options)
                     except:
                         options = []
-                
+               
                 user_answer = st.radio(
                     "請選擇答案：",
                     options=options,
                     key=f"answer_{current_idx}"
                 )
             else:
-                # 開放題
                 user_answer = st.text_area(
                     "請輸入你的回答（寫作/口說可先打字練習）：",
                     key=f"answer_{current_idx}",
@@ -692,10 +690,9 @@ if q.get("skill") == "listening":
             if not st.session_state.quiz_answered:
                 if st.button("提交答案", key=f"submit_{current_idx}"):
                     st.session_state.quiz_answered = True
-                    
+                   
                     correct = q.get("correct_answer", "")
-                    
-                    # 簡單判斷（選擇題較準，開放題只顯示範例）
+                   
                     if q.get("question_type") == "mcq":
                         if user_answer == correct:
                             st.session_state.quiz_score += 1
@@ -704,18 +701,17 @@ if q.get("skill") == "listening":
                             st.error(f"❌ 答錯了。正確答案是：{correct}")
                     else:
                         st.info("開放題沒有標準對錯，請參考下方範例與解析。")
-                    
+                   
                     st.markdown("### 解析")
                     st.write(q.get("explanation", "暫無解析"))
-                    
+                   
                     if q.get("question_type") != "mcq":
                         st.markdown("**參考答案：**")
                         st.write(correct)
             else:
-                # 已經回答過，顯示下一題按鈕
                 st.markdown("### 解析")
                 st.write(q.get("explanation", "暫無解析"))
-                
+               
                 if st.button("下一題 →", key=f"next_{current_idx}"):
                     st.session_state.quiz_index += 1
                     st.session_state.quiz_answered = False
