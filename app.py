@@ -682,6 +682,8 @@ def render_word_result() -> None:
 
 
 def analyze_sentence(sentence_input: str) -> None:
+    """整句翻譯：沿用既有的 ai_service.get_word_analysis()，
+    把整句話當作輸入丟進去，用回傳的 meaning 當作整句中文翻譯。"""
     normalized = sentence_input.strip()
     if not normalized:
         st.warning("請先輸入要翻譯的句子。")
@@ -693,7 +695,7 @@ def analyze_sentence(sentence_input: str) -> None:
     if not data:
         loading = render_loading_animation("貓咪正在翻譯整句話…", "loading_sentence_analysis")
         try:
-            data = ai_service.get_sentence_analysis(normalized)
+            data = ai_service.get_word_analysis(normalized)
         except Exception:
             data = None
         finally:
@@ -702,6 +704,11 @@ def analyze_sentence(sentence_input: str) -> None:
             st.error("整句翻譯失敗，AI 服務可能忙碌中，請稍候一分鐘再試。")
             return
         st.session_state[cache_key] = data
+        save_word_to_supabase({
+            "word":data.get("word", normalized), "lang_code":data.get("lang_code", "fr"),
+            "phonetic":data.get("phonetic", ""), "meaning":data.get("meaning", ""),
+            "example_sentence":data.get("example_sentence", ""), "status":"review",
+        })
     st.session_state.current_sentence_data = data
     st.session_state.pop("current_data", None)
 
@@ -710,13 +717,18 @@ def render_sentence_result() -> None:
     data = st.session_state.get("current_sentence_data")
     if not data:
         return
-    original_sentence = str(data.get("original_sentence", ""))
-    translation = html.escape(str(data.get("sentence_translation", "")))
+    original_sentence = str(data.get("word", ""))
+    translation = html.escape(str(data.get("meaning", "")))
     lang_code = data.get("lang_code", "fr")
+    extra_note = str(data.get("sentence_translation", "")).strip()
+
     st.markdown(
         f'<div class="lg-card"><div class="lg-eyebrow">整句翻譯</div><h3>{html.escape(original_sentence)}</h3><div class="lg-note"><strong>{translation}</strong></div></div>',
         unsafe_allow_html=True,
     )
+    if extra_note and extra_note != data.get("meaning", ""):
+        st.caption(f"補充說明：{extra_note}")
+
     if st.button("播放整句發音", key="sentence_audio"):
         try:
             audio = nlp_engine.generate_audio(original_sentence, lang=lang_code)
