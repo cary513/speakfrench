@@ -5,12 +5,18 @@ import random
 import re
 import time
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
 from services.ai_service import AIService
 from services.nlp_engine import NLPEngine
 from supabase import Client, create_client
+
+try:
+    from streamlit_lottie import st_lottie
+except ImportError:
+    st_lottie = None
 
 
 # =========================================================
@@ -28,6 +34,16 @@ DAILY_GOAL_MINUTES = 12
 NAV_ITEMS = ["首頁", "日曆", "複習卡", "A2刷題"]
 MOODS = ["很疲累", "有點累", "普通", "不錯", "很棒"]
 MOOD_ICONS = ["☹", "🙁", "😐", "🙂", "😄"]
+APP_DIR = Path(__file__).resolve().parent
+LOTTIE_DIR = APP_DIR / "assets" / "lottie"
+LOTTIE_FILES = {
+    "idle": "language_genius_cat_under_book_idle.json",
+    "learning": "language_genius_cat_plane_learning.json",
+    "paused": "language_genius_cat_box_paused.json",
+    "completed": "language_genius_cat_celebration_complete.json",
+    "results": "language_genius_cat_cup_results.json",
+    "loading": "language_genius_cat_stretch_loading.json",
+}
 
 
 @st.cache_resource
@@ -287,6 +303,54 @@ def brand_header() -> None:
     )
 
 
+@st.cache_data(show_spinner=False)
+def load_lottie(animation_name: str) -> dict | None:
+    """從本機 assets 載入動畫，避免每次 Streamlit rerun 重讀大型 JSON。"""
+    filename = LOTTIE_FILES.get(animation_name)
+    if not filename:
+        return None
+    path = LOTTIE_DIR / filename
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def render_lottie_state(
+    animation_name: str,
+    *,
+    height: int = 260,
+    loop: bool = True,
+    key: str | None = None,
+) -> None:
+    """統一渲染六種貓咪狀態；套件或檔案缺失時保持介面可操作。"""
+    animation = load_lottie(animation_name)
+    if st_lottie and animation:
+        st_lottie(
+            animation,
+            height=height,
+            loop=loop,
+            quality="high",
+            key=key or f"cat_{animation_name}",
+        )
+        return
+    st.markdown(
+        '<div class="lg-cat-stage"><div class="lg-cat">🐈</div></div>',
+        unsafe_allow_html=True,
+    )
+    if not st_lottie:
+        st.caption("請在 requirements.txt 加入 streamlit-lottie，動畫即可顯示。")
+
+
+def render_loading_animation(message: str, key: str):
+    """顯示 Loading 貓咪並回傳 placeholder，任務完成後可呼叫 empty()。"""
+    placeholder = st.empty()
+    with placeholder.container():
+        render_lottie_state("loading", height=190, loop=True, key=key)
+        st.caption(message)
+    return placeholder
+
+
 def greeting() -> str:
     hour = datetime.now(TAIPEI_TZ).hour
     return "Good morning," if hour < 12 else "Good afternoon," if hour < 18 else "Good evening,"
@@ -342,19 +406,25 @@ def render_stats(log: dict, eyebrow: str = "今日學習數據") -> None:
 def render_timer_scene() -> None:
     base_seconds, goal_seconds = timer_elapsed(), DAILY_GOAL_MINUTES * 60
     running = st.session_state.timer_status == "running"
+    render_lottie_state(
+        "learning" if running else "paused",
+        height=270,
+        loop=True,
+        key="cat_learning" if running else "cat_paused",
+    )
     components.html(
         f"""
-        <div class="scene"><div class="paris">PARIS</div><div class="tower">♜</div>
-          <div id="cat" class="cat">🐈</div><div class="path"></div>
+        <div class="scene"><div class="paris">NEXT STOP · PARIS</div><div class="tower">♜</div>
+          <div id="traveller" class="traveller">●</div><div class="path"></div>
           <div id="clock" class="clock">00:00:00</div><div class="goal">今日目標 {DAILY_GOAL_MINUTES} 分鐘</div>
         </div>
         <style>
           body{{margin:0;font-family:Arial,sans-serif;color:#171717}}
-          .scene{{position:relative;height:330px;overflow:hidden;border-radius:24px;background:#fff}}
+          .scene{{position:relative;height:175px;overflow:hidden;border-radius:24px;background:#fff}}
           .paris{{position:absolute;left:24px;top:22px;color:#999;letter-spacing:.18em;font-size:11px}}
-          .tower{{position:absolute;right:44px;bottom:72px;font-size:95px;color:#3a3a3a;transform:scaleX(.7)}}
-          .path{{position:absolute;left:30px;right:30px;bottom:69px;border-bottom:3px dotted #F7A916}}
-          .cat{{position:absolute;left:28px;bottom:57px;font-size:60px;transform:scaleX(-1);transition:left .4s linear}}
+          .tower{{position:absolute;right:38px;bottom:18px;font-size:72px;color:#3a3a3a;transform:scaleX(.7)}}
+          .path{{position:absolute;left:30px;right:70px;bottom:32px;border-bottom:3px dotted #F7A916}}
+          .traveller{{position:absolute;left:28px;bottom:24px;color:#F7A916;font-size:20px;transition:left .4s linear}}
           .clock{{text-align:center;font-size:42px;font-weight:750;padding-top:55px;letter-spacing:-.03em}}
           .goal{{text-align:center;color:#7D818A;margin-top:7px;font-size:14px}}
         </style>
@@ -363,11 +433,11 @@ def render_timer_scene() -> None:
           function draw(){{const e=base+(running?Math.floor((Date.now()-started)/1000):0);
             const h=String(Math.floor(e/3600)).padStart(2,'0'),m=String(Math.floor((e%3600)/60)).padStart(2,'0'),s=String(e%60).padStart(2,'0');
             document.getElementById('clock').textContent=`${{h}}:${{m}}:${{s}}`;
-            document.getElementById('cat').style.left=`calc(28px + ${{Math.min(e/goal,1)}} * 58%)`;}}
+            document.getElementById('traveller').style.left=`calc(28px + ${{Math.min(e/goal,1)}} * 58%)`;}}
           draw();setInterval(draw,500);
         </script>
         """,
-        height=340,
+        height=185,
     )
 
 
@@ -388,7 +458,7 @@ def render_daily_log_form(target_date: date) -> None:
             log["mood"], log["journal"] = mood, journal.strip()
             save_daily_log(log, notify=True)
             st.session_state.show_daily_log_form = False
-            st.session_state.timer_status = "idle"
+            st.session_state.timer_status = "results"
             st.rerun()
 
 
@@ -415,12 +485,14 @@ def analyze_word(word_input: str) -> None:
         except Exception:
             data = None
     if not data:
-        with st.spinner("🐈 貓咪正在整理單字資料…"):
-            try:
-                data = ai_service.get_word_analysis(normalized)
-            except Exception:
-                st.error("AI 服務目前忙碌，請稍候一分鐘再試。")
-                return
+        loading = render_loading_animation("貓咪正在整理單字資料…", "loading_word_analysis")
+        try:
+            data = ai_service.get_word_analysis(normalized)
+        except Exception:
+            st.error("AI 服務目前忙碌，請稍候一分鐘再試。")
+            return
+        finally:
+            loading.empty()
     if data:
         st.session_state[cache_key] = data
         st.session_state.current_data = data
@@ -476,11 +548,13 @@ def render_scenarios() -> None:
         category = categories[label]
         cache_key = f"cache_phrases_{category}"
         if st.button("產生情境句型", type="primary"):
-            with st.spinner("🐈 正在準備你的情境句型…"):
-                try:
-                    items = ai_service.generate_phrases_by_category(category, st.session_state.user_profile)
-                except Exception:
-                    items = []
+            loading = render_loading_animation("正在準備你的情境句型…", "loading_scenarios")
+            try:
+                items = ai_service.generate_phrases_by_category(category, st.session_state.user_profile)
+            except Exception:
+                items = []
+            finally:
+                loading.empty()
             st.session_state[cache_key] = items
             auto_save_generated_phrases_to_db(items)
         for index, item in enumerate(st.session_state.get(cache_key, [])):
@@ -530,12 +604,18 @@ def render_home() -> None:
         if right.button("結束學習", use_container_width=True):
             finish_timer(); st.rerun()
     elif st.session_state.timer_status == "completed":
-        st.markdown('<div class="lg-cat-stage"><div class="lg-cat lg-celebrate">🎉🐈</div></div>', unsafe_allow_html=True)
+        render_lottie_state("completed", height=290, loop=False, key="cat_completed")
         st.success("今日學習完成！你又向目標靠近了一點。")
         if st.button("查看並完成今日紀錄", type="primary", use_container_width=True):
             st.session_state.show_daily_log_form = True
+    elif st.session_state.timer_status == "results":
+        render_lottie_state("results", height=275, loop=True, key="cat_results")
+        st.success("今日成果與心情紀錄已儲存。好好休息一下吧！")
+        if st.button("開始新的學習", type="primary", use_container_width=True):
+            st.session_state.timer_status = "idle"
+            st.rerun()
     else:
-        st.markdown('<div class="lg-cat-stage"><div><div class="lg-cat">🐈</div><div class="lg-book">📖</div></div></div>', unsafe_allow_html=True)
+        render_lottie_state("idle", height=275, loop=True, key="cat_idle")
         if st.button("開始今日學習", type="primary", use_container_width=True):
             start_timer(); st.rerun()
     if st.session_state.show_daily_log_form:
@@ -602,9 +682,10 @@ def render_monthly_report(year: int, month: int) -> None:
         mood_counts[log.get("mood", "普通")] = mood_counts.get(log.get("mood", "普通"), 0) + 1
     main_mood = max(mood_counts, key=mood_counts.get) if logs else "尚未記錄"
     st.markdown(
-        f'<div class="lg-card"><div class="lg-eyebrow">學習洞察</div><h3>本月常見心情：{main_mood}</h3><p>保持每日短時間練習，並優先加強完成率較低的題型。</p><div class="lg-cat-stage" style="min-height:105px"><div class="lg-cat">🐈❤️</div></div></div>',
+        f'<div class="lg-card"><div class="lg-eyebrow">學習洞察</div><h3>本月常見心情：{main_mood}</h3><p>保持每日短時間練習，並優先加強完成率較低的題型。</p></div>',
         unsafe_allow_html=True,
     )
+    render_lottie_state("results", height=220, loop=True, key="cat_monthly_results")
 
 
 def render_calendar_page() -> None:
@@ -688,6 +769,7 @@ def render_a2_quiz() -> None:
     skills = {"全部":None, "閱讀 Reading":"reading", "聽力 Listening":"listening", "寫作 Writing":"writing", "口說 Speaking":"speaking"}
     selected = st.selectbox("選擇練習技能", list(skills.keys()), key="skill_selector")
     if st.button("開始刷題 / 換一批題目", type="primary", use_container_width=True):
+        loading = render_loading_animation("貓咪正在載入 A2 題目…", "loading_a2_questions")
         try:
             query = supabase.table("quiz_questions").select("*").eq("is_active", True)
             if skills[selected]:
@@ -700,6 +782,8 @@ def render_a2_quiz() -> None:
             st.rerun()
         except Exception as exc:
             st.error(f"載入題目失敗：{exc}")
+        finally:
+            loading.empty()
     questions = st.session_state.quiz_questions
     if not questions:
         st.markdown('<div class="lg-cat-stage"><div class="lg-cat">🐈</div></div>', unsafe_allow_html=True)
