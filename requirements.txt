@@ -3,3 +3,4 @@ google-generativeai
 gTTS
 pandas
 supabase
+streamlit-lottie>=0.0.5
