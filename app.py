@@ -178,6 +178,18 @@ def local_today() -> date:
     return datetime.now(TAIPEI_TZ).date()
 
 
+def is_probable_sentence(text: str) -> bool:
+    """簡單判斷輸入是否為整句（而非單一單字）。"""
+    normalized = text.strip()
+    if not normalized:
+        return False
+    if len(normalized.split()) > 1:
+        return True
+    if re.search(r"[.!?，。！？]", normalized) and len(normalized) > 8:
+        return True
+    return False
+
+
 STATE_DEFAULTS = {
     "active_page":"首頁", "review_zone":[], "brain_zone":[], "word_history":[],
     "current_card_index":0, "user_profile":None, "selected_category":None,
@@ -573,11 +585,49 @@ def render_daily_log_form(target_date: date) -> None:
 # =========================================================
 # 5. 首頁
 # =========================================================
+def fetch_word_explanation(word: str, lang_hint: str = "fr") -> dict | None:
+    """共用的單字解釋抓取邏輯：Session 快取 → Supabase → Gemini。"""
+    normalized = word.strip()
+    if not normalized:
+        return None
+    cache_key = f"word_cache_{normalized.lower()}"
+    data = st.session_state.get(cache_key)
+    if data:
+        return data
+    try:
+        rows = supabase.table("vocabulary").select("*").eq("word", normalized).execute().data or []
+        if rows:
+            row = rows[0]
+            data = {
+                "word":row.get("word", normalized), "lang_code":row.get("lang_code", lang_hint),
+                "phonetic":row.get("phonetic", ""), "meaning":row.get("meaning", ""),
+                "example_sentence":row.get("example_sentence", ""), "sentence_translation":"",
+            }
+            st.session_state[cache_key] = data
+            return data
+    except Exception:
+        pass
+    try:
+        data = ai_service.get_word_analysis(normalized)
+    except Exception:
+        data = None
+    if data:
+        st.session_state[cache_key] = data
+        save_word_to_supabase({
+            "word":data.get("word", normalized), "lang_code":data.get("lang_code", lang_hint),
+            "phonetic":data.get("phonetic", ""), "meaning":data.get("meaning", ""),
+            "example_sentence":data.get("example_sentence", ""), "status":"review",
+        })
+    return data
+
+
 def analyze_word(word_input: str) -> None:
     normalized = word_input.strip()
     if not normalized:
         st.warning("請先輸入英文或法文單字。")
         return
+    st.session_state.pop("clicked_explain_word", None)
+    st.session_state.pop("clicked_explain_lang", None)
     cache_key = f"word_cache_{normalized.lower()}"
     data = st.session_state.get(cache_key)
     if not data:
@@ -604,6 +654,7 @@ def analyze_word(word_input: str) -> None:
     if data:
         st.session_state[cache_key] = data
         st.session_state.current_data = data
+        st.session_state.pop("current_sentence_data", None)
         save_word_to_supabase({
             "word":data.get("word", normalized), "lang_code":data.get("lang_code", "fr"),
             "phonetic":data.get("phonetic", ""), "meaning":data.get("meaning", ""),
@@ -628,6 +679,95 @@ def render_word_result() -> None:
                 st.audio(audio, format="audio/mp3")
         except Exception:
             st.warning("語音服務暫時無法使用。")
+
+
+def analyze_sentence(sentence_input: str) -> None:
+    normalized = sentence_input.strip()
+    if not normalized:
+        st.warning("請先輸入要翻譯的句子。")
+        return
+    st.session_state.pop("clicked_explain_word", None)
+    st.session_state.pop("clicked_explain_lang", None)
+    cache_key = f"sentence_cache_{normalized.lower()}"
+    data = st.session_state.get(cache_key)
+    if not data:
+        loading = render_loading_animation("貓咪正在翻譯整句話…", "loading_sentence_analysis")
+        try:
+            data = ai_service.get_sentence_analysis(normalized)
+        except Exception:
+            data = None
+        finally:
+            loading.empty()
+        if not data:
+            st.error("整句翻譯失敗，AI 服務可能忙碌中，請稍候一分鐘再試。")
+            return
+        st.session_state[cache_key] = data
+    st.session_state.current_sentence_data = data
+    st.session_state.pop("current_data", None)
+
+
+def render_sentence_result() -> None:
+    data = st.session_state.get("current_sentence_data")
+    if not data:
+        return
+    original_sentence = str(data.get("original_sentence", ""))
+    translation = html.escape(str(data.get("sentence_translation", "")))
+    lang_code = data.get("lang_code", "fr")
+    st.markdown(
+        f'<div class="lg-card"><div class="lg-eyebrow">整句翻譯</div><h3>{html.escape(original_sentence)}</h3><div class="lg-note"><strong>{translation}</strong></div></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("播放整句發音", key="sentence_audio"):
+        try:
+            audio = nlp_engine.generate_audio(original_sentence, lang=lang_code)
+            if audio:
+                st.audio(audio, format="audio/mp3")
+        except Exception:
+            st.warning("語音服務暫時無法使用。")
+
+    words = re.findall(r"\b[\w'’-]+\b", original_sentence)
+    if words:
+        st.caption("點擊句中單字，可查看個別解釋與發音：")
+        cols = st.columns(min(len(words), 6))
+        for i, w in enumerate(words):
+            with cols[i % 6]:
+                if st.button(w, key=f"sentence_word_{i}_{w}", use_container_width=True):
+                    st.session_state.clicked_explain_word = w
+                    st.session_state.clicked_explain_lang = lang_code
+
+    explain_word = st.session_state.get("clicked_explain_word")
+    if explain_word:
+        explain_lang = st.session_state.get("clicked_explain_lang", lang_code)
+        explain_cache_key = f"word_cache_{explain_word.strip().lower()}"
+        if explain_cache_key in st.session_state:
+            explain_data = fetch_word_explanation(explain_word, explain_lang)
+        else:
+            with st.spinner(f"正在分析「{explain_word}」…"):
+                explain_data = fetch_word_explanation(explain_word, explain_lang)
+        if explain_data:
+            word_txt = html.escape(str(explain_data.get("word", explain_word)))
+            meaning_txt = html.escape(str(explain_data.get("meaning", "")))
+            example_txt = html.escape(str(explain_data.get("example_sentence", "")))
+            st.markdown(
+                f"""
+                <div style="background-color:#3B82F6;color:white;padding:14px 18px;
+                border-radius:12px;margin-top:12px;line-height:1.6;font-size:15px;">
+                <strong style="font-size:17px;">{word_txt}</strong><br>
+                {meaning_txt}<br><br>
+                <span style="opacity:0.9;">例句用法參考：{example_txt}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(f"播放「{explain_word}」發音", key=f"audio_explain_{explain_word}"):
+                try:
+                    audio = nlp_engine.generate_audio(explain_word, lang=explain_lang)
+                    if audio:
+                        st.audio(audio, format="audio/mp3")
+                except Exception:
+                    st.warning("語音暫時無法播放。")
+        else:
+            st.warning(f"無法取得「{explain_word}」的解釋，請稍後再試。")
 
 
 def render_scenarios() -> None:
@@ -695,10 +835,17 @@ def render_home() -> None:
     st.markdown(f'<div class="lg-hero-title">{greeting()}</div>', unsafe_allow_html=True)
     st.caption(datetime.now(TAIPEI_TZ).strftime("%A, %B %d"))
     search_col, button_col = st.columns([5, 1])
-    query = search_col.text_input("單字查詢", placeholder="輸入英文或法文單字", label_visibility="collapsed")
+    query = search_col.text_input(
+        "單字或整句查詢", placeholder="輸入英文/法文單字，或貼上一整句話",
+        label_visibility="collapsed",
+    )
     if button_col.button("查詢", type="primary", use_container_width=True):
-        analyze_word(query)
+        if is_probable_sentence(query):
+            analyze_sentence(query)
+        else:
+            analyze_word(query)
     render_word_result()
+    render_sentence_result()
     render_stats(get_log(local_today()))
 
     if st.session_state.timer_status in {"running", "paused"}:
