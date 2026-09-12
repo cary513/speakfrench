@@ -137,10 +137,43 @@ st.markdown(
     }
     .st-key-bottom_nav [data-testid="stRadio"]>label { display:none; }
     .st-key-bottom_nav [data-baseweb="radio"]>div { justify-content:space-around; width:100%; gap:4px; }
-    .st-key-bottom_nav label { flex:1; justify-content:center; border-radius:14px; padding:8px 10px; }
-    .st-key-bottom_nav label:has(input:checked) { background:var(--lg-orange-soft); }
+    .st-key-bottom_nav label {
+        flex:1; justify-content:center; align-items:center; flex-direction:column;
+        gap:3px; position:relative; border-radius:0; padding:7px 10px 9px;
+        background:transparent!important;
+    }
+    .st-key-bottom_nav label:has(input:checked) { background:transparent!important; }
     .st-key-bottom_nav label>div:first-child { display:none; }
-    .st-key-bottom_nav p { color:var(--lg-text); font-size:.86rem; font-weight:680; }
+    .st-key-bottom_nav label::before {
+        content:""; display:block; width:25px; height:25px; flex:0 0 25px;
+        background:#171717; opacity:.72;
+        -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+        -webkit-mask-position:center; mask-position:center;
+        -webkit-mask-size:contain; mask-size:contain;
+    }
+    .st-key-bottom_nav label:nth-of-type(1)::before {
+        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
+        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
+    }
+    .st-key-bottom_nav label:nth-of-type(2)::before {
+        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
+        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
+    }
+    .st-key-bottom_nav label:nth-of-type(3)::before {
+        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
+        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
+    }
+    .st-key-bottom_nav label:nth-of-type(4)::before {
+        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
+        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
+    }
+    .st-key-bottom_nav label:has(input:checked)::before { opacity:1; }
+    .st-key-bottom_nav label:has(input:checked)::after {
+        content:""; position:absolute; bottom:2px; width:18px; height:3px;
+        border-radius:999px; background:var(--lg-orange);
+    }
+    .st-key-bottom_nav p { color:#171717; font-size:.72rem; line-height:1; font-weight:650; opacity:.76; }
+    .st-key-bottom_nav label:has(input:checked) p { opacity:1; font-weight:750; }
     @media(max-width:640px) {
         [data-testid="stMainBlockContainer"] { padding:1.25rem 1rem 8rem; }
         .lg-card { padding:20px; } .lg-stat { padding:6px; }
@@ -166,7 +199,7 @@ STATE_DEFAULTS = {
     "timer_status":"idle", "timer_started_at":None, "timer_accumulated_seconds":0.0,
     "daily_logs":{}, "selected_log_date":local_today(), "show_daily_log_form":False,
     "show_monthly_report":False, "quiz_index":0, "quiz_questions":[],
-    "quiz_score":0, "quiz_answered":False,
+    "quiz_score":0, "quiz_answered":False, "persistence_error":None,
 }
 for state_key, default_value in STATE_DEFAULTS.items():
     if state_key not in st.session_state:
@@ -187,8 +220,8 @@ def get_log(target_date: date | str) -> dict:
     return st.session_state.daily_logs[key]
 
 
-def save_daily_log(log: dict, notify: bool = False) -> None:
-    """先更新 Session；若 study_logs 表存在，再同步 Supabase。"""
+def save_daily_log(log: dict, notify: bool = False) -> bool:
+    """同步 Session 與 Supabase，並讀回確認資料真的已寫入。"""
     st.session_state.daily_logs[log["study_date"]] = log.copy()
     payload = {
         "study_date":log["study_date"],
@@ -200,11 +233,33 @@ def save_daily_log(log: dict, notify: bool = False) -> None:
     }
     try:
         supabase.table("study_logs").upsert(payload, on_conflict="study_date").execute()
+        verified = (
+            supabase.table("study_logs")
+            .select("study_date,study_seconds,remembered_cards,quiz_count,mood,journal")
+            .eq("study_date", payload["study_date"])
+            .limit(1)
+            .execute()
+            .data or []
+        )
+        if not verified:
+            raise RuntimeError("寫入後無法從 study_logs 讀回資料")
+        saved = verified[0]
+        st.session_state.daily_logs[payload["study_date"]] = {
+            **empty_log(date.fromisoformat(payload["study_date"])),
+            **saved,
+        }
+        st.session_state.persistence_error = None
         if notify:
-            st.toast("今日學習紀錄已儲存")
-    except Exception:
+            st.toast("今日學習紀錄已永久儲存至 Supabase")
+        return True
+    except Exception as exc:
+        st.session_state.persistence_error = (
+            "學習紀錄尚未寫入 Supabase。請先執行 supabase_learning_persistence.sql。"
+            f" 詳細訊息：{exc}"
+        )
         if notify:
-            st.toast("紀錄已暫存在本次使用階段；建立 study_logs 表後即可同步。")
+            st.error(st.session_state.persistence_error)
+        return False
 
 
 def load_initial_data() -> None:
@@ -228,8 +283,34 @@ def load_initial_data() -> None:
             row["study_date"]:{**empty_log(date.fromisoformat(row["study_date"])), **row}
             for row in logs if row.get("study_date")
         }
-    except Exception:
-        pass
+    except Exception as exc:
+        st.session_state.persistence_error = f"無法讀取 study_logs：{exc}"
+    try:
+        timer_rows = (
+            supabase.table("study_timer_state")
+            .select("*")
+            .eq("id", 1)
+            .limit(1)
+            .execute()
+            .data or []
+        )
+        if timer_rows:
+            timer = timer_rows[0]
+            saved_status = str(timer.get("timer_status", "idle"))
+            if saved_status in {"idle", "running", "paused", "completed", "results"}:
+                st.session_state.timer_status = saved_status
+            st.session_state.timer_accumulated_seconds = float(
+                timer.get("timer_accumulated_seconds", 0) or 0
+            )
+            started_at = timer.get("timer_started_at")
+            st.session_state.timer_started_at = (
+                datetime.fromisoformat(str(started_at).replace("Z", "+00:00")).timestamp()
+                if started_at else None
+            )
+    except Exception as exc:
+        current_error = st.session_state.get("persistence_error")
+        timer_error = f"無法讀取 study_timer_state：{exc}"
+        st.session_state.persistence_error = f"{current_error}；{timer_error}" if current_error else timer_error
     st.session_state.data_loaded = True
 
 
@@ -291,6 +372,9 @@ def auto_save_generated_phrases_to_db(items: list[dict]) -> None:
 
 
 load_initial_data()
+
+if st.session_state.get("persistence_error"):
+    st.error(st.session_state.persistence_error)
 
 
 # =========================================================
@@ -363,11 +447,38 @@ def timer_elapsed() -> int:
     return max(0, int(seconds))
 
 
+def save_timer_state() -> bool:
+    """只在開始、暫停、完成等狀態切換時寫入，不會每秒消耗資料庫請求。"""
+    started_at = None
+    if st.session_state.timer_started_at:
+        started_at = datetime.fromtimestamp(
+            float(st.session_state.timer_started_at), timezone.utc
+        ).isoformat()
+    payload = {
+        "id":1,
+        "timer_status":st.session_state.timer_status,
+        "timer_started_at":started_at,
+        "timer_accumulated_seconds":int(st.session_state.timer_accumulated_seconds),
+        "updated_at":datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        supabase.table("study_timer_state").upsert(payload, on_conflict="id").execute()
+        st.session_state.persistence_error = None
+        return True
+    except Exception as exc:
+        st.session_state.persistence_error = (
+            "計時狀態尚未寫入 Supabase。請先執行 supabase_learning_persistence.sql。"
+            f" 詳細訊息：{exc}"
+        )
+        return False
+
+
 def start_timer() -> None:
     if st.session_state.timer_status == "idle":
         st.session_state.timer_accumulated_seconds = 0.0
     st.session_state.timer_started_at = time.time()
     st.session_state.timer_status = "running"
+    save_timer_state()
 
 
 def pause_timer() -> None:
@@ -375,6 +486,7 @@ def pause_timer() -> None:
         st.session_state.timer_accumulated_seconds = timer_elapsed()
         st.session_state.timer_started_at = None
         st.session_state.timer_status = "paused"
+        save_timer_state()
 
 
 def finish_timer() -> None:
@@ -386,14 +498,24 @@ def finish_timer() -> None:
     st.session_state.timer_started_at = None
     st.session_state.timer_status = "completed"
     st.session_state.show_daily_log_form = True
+    save_timer_state()
+
+
+def reset_timer() -> None:
+    st.session_state.timer_status = "idle"
+    st.session_state.timer_started_at = None
+    st.session_state.timer_accumulated_seconds = 0.0
+    save_timer_state()
 
 
 def render_stats(log: dict, eyebrow: str = "今日學習數據") -> None:
+    study_seconds = int(log.get("study_seconds", 0))
+    study_minutes = "<1" if 0 < study_seconds < 60 else str(study_seconds // 60)
     st.markdown(
         f"""
         <div class="lg-card"><div class="lg-eyebrow">{eyebrow}</div>
           <div class="lg-stats">
-            <div class="lg-stat"><div class="lg-stat-label">學習時間</div><div class="lg-stat-value">{int(log.get('study_seconds',0))//60}</div><div class="lg-stat-unit">分鐘</div></div>
+            <div class="lg-stat"><div class="lg-stat-label">學習時間</div><div class="lg-stat-value">{study_minutes}</div><div class="lg-stat-unit">分鐘</div></div>
             <div class="lg-stat"><div class="lg-stat-label">複習卡</div><div class="lg-stat-value">{int(log.get('remembered_cards',0))}</div><div class="lg-stat-unit">張</div></div>
             <div class="lg-stat"><div class="lg-stat-label">A2 刷題</div><div class="lg-stat-value">{int(log.get('quiz_count',0))}</div><div class="lg-stat-unit">題</div></div>
           </div>
@@ -456,10 +578,11 @@ def render_daily_log_form(target_date: date) -> None:
         )
         if st.form_submit_button("儲存學習紀錄", type="primary", use_container_width=True):
             log["mood"], log["journal"] = mood, journal.strip()
-            save_daily_log(log, notify=True)
-            st.session_state.show_daily_log_form = False
-            st.session_state.timer_status = "results"
-            st.rerun()
+            if save_daily_log(log, notify=True):
+                st.session_state.show_daily_log_form = False
+                st.session_state.timer_status = "results"
+                save_timer_state()
+                st.rerun()
 
 
 # =========================================================
@@ -612,7 +735,7 @@ def render_home() -> None:
         render_lottie_state("results", height=275, loop=True, key="cat_results")
         st.success("今日成果與心情紀錄已儲存。好好休息一下吧！")
         if st.button("開始新的學習", type="primary", use_container_width=True):
-            st.session_state.timer_status = "idle"
+            reset_timer()
             st.rerun()
     else:
         render_lottie_state("idle", height=275, loop=True, key="cat_idle")
