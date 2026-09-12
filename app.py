@@ -32,6 +32,7 @@ st.set_page_config(
 TAIPEI_TZ = timezone(timedelta(hours=8))
 DAILY_GOAL_MINUTES = 12
 NAV_ITEMS = ["首頁", "日曆", "複習卡", "A2刷題"]
+NAV_ICONS = {"首頁": "🏠", "日曆": "📅", "複習卡": "🗂️", "A2刷題": "✏️"}
 MOODS = ["很疲累", "有點累", "普通", "不錯", "很棒"]
 MOOD_ICONS = ["☹", "🙁", "😐", "🙂", "😄"]
 APP_DIR = Path(__file__).resolve().parent
@@ -130,54 +131,32 @@ st.markdown(
     [data-testid="stMetric"] { background:#FFF; border-radius:18px; padding:18px; box-shadow:var(--lg-shadow); }
     div[data-testid="stExpander"] { border:0; border-radius:18px; background:#FFF; box-shadow:var(--lg-shadow); }
 
-    /* ===== 底部導覽（按鈕版，無圓圈） ===== */
+    /* ===== 底部導覽（按鈕版，emoji 圖示，強制單行排列） ===== */
     .st-key-bottom_nav {
         position:fixed; z-index:999; left:50%; bottom:18px; transform:translateX(-50%);
         width:min(680px,calc(100vw - 28px)); background:rgba(255,255,255,.94);
-        border:1px solid rgba(23,23,23,.06); border-radius:22px; padding:5px 12px;
+        border:1px solid rgba(23,23,23,.06); border-radius:22px; padding:6px 10px;
         box-shadow:0 16px 44px rgba(24,24,27,.16); backdrop-filter:blur(16px);
     }
-    .st-key-bottom_nav [data-testid="stHorizontalBlock"] { gap:4px; }
-    .st-key-bottom_nav div[data-testid="column"] { display:flex; }
+    /* 強制橫向排列，避免 Streamlit 在窄螢幕自動把 columns 疊成直向 */
+    .st-key-bottom_nav [data-testid*="HorizontalBlock"] {
+        display:flex !important; flex-direction:row !important;
+        flex-wrap:nowrap !important; gap:4px !important; width:100% !important;
+    }
+    .st-key-bottom_nav [data-testid*="olumn"] {
+        width:auto !important; flex:1 1 0 !important; min-width:0 !important;
+    }
     .st-key-bottom_nav .stButton { width:100%; }
     .st-key-bottom_nav .stButton>button {
-        width:100%; min-height:auto; flex-direction:column; gap:3px;
-        padding:7px 6px 9px; border:none!important; background:transparent!important;
-        box-shadow:none!important; border-radius:0; color:#171717;
-        font-size:.72rem; font-weight:650; opacity:.76; transform:none!important;
+        width:100%; min-height:46px; border:none!important; background:transparent!important;
+        box-shadow:none!important; border-radius:14px; color:#171717; opacity:.62;
+        font-size:.8rem; font-weight:650; padding:8px 4px; white-space:nowrap;
+        transform:none!important; position:relative;
     }
-    .st-key-bottom_nav .stButton>button:hover { opacity:1; border:none!important; transform:none!important; }
-    .st-key-bottom_nav .stButton>button p { font-size:.72rem; font-weight:inherit; color:inherit; }
-    .st-key-bottom_nav .stButton>button::before {
-        content:""; display:block; width:25px; height:25px; margin:0 auto;
-        background:#171717; opacity:1;
-        -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-        -webkit-mask-position:center; mask-position:center;
-        -webkit-mask-size:contain; mask-size:contain;
-    }
-    .st-key-bottom_nav div[data-testid="column"]:nth-of-type(1) button::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
-    }
-    .st-key-bottom_nav div[data-testid="column"]:nth-of-type(2) button::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
-    }
-    .st-key-bottom_nav div[data-testid="column"]:nth-of-type(3) button::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
-    }
-    .st-key-bottom_nav div[data-testid="column"]:nth-of-type(4) button::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
-    }
+    .st-key-bottom_nav .stButton>button:hover { opacity:.9; border:none!important; transform:none!important; }
+    .st-key-bottom_nav .stButton>button p { font-size:.8rem; font-weight:inherit; color:inherit; }
     .st-key-bottom_nav .stButton>button[kind="primary"] {
-        opacity:1; font-weight:750; background:transparent!important;
-    }
-    .st-key-bottom_nav .stButton>button[kind="primary"]::before { opacity:1; }
-    .st-key-bottom_nav .stButton>button[kind="primary"]::after {
-        content:""; display:block; width:18px; height:3px; margin:2px auto 0;
-        border-radius:999px; background:var(--lg-orange);
+        opacity:1; font-weight:750; color:#A36A00; background:var(--lg-orange-soft)!important;
     }
 
     @media(max-width:640px) {
@@ -981,7 +960,7 @@ with st.container(key="bottom_nav"):
         is_active = st.session_state.active_page == nav_label
         with nav_col:
             if st.button(
-                nav_label,
+                f"{NAV_ICONS[nav_label]} {nav_label}",
                 key=f"nav_btn_{nav_label}",
                 type="primary" if is_active else "secondary",
                 use_container_width=True,
