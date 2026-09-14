@@ -417,6 +417,18 @@ load_initial_data()
 if st.session_state.get("persistence_error"):
     st.error(st.session_state.persistence_error)
 
+@st.cache_data(show_spinner=False, ttl=86400)
+def get_cached_audio(text, language_code):
+    """同一文字一天內只產生一次語音。"""
+
+    if not text:
+        return None
+
+    return nlp_engine.generate_audio(
+        text,
+        lang=language_code
+    )
+
 
 # =========================================================
 # 4. 共用 UI 與計時器
@@ -887,77 +899,60 @@ def play_search_audio(text, language_code, key):
 
 
 def render_word_breakdown(data):
-    """呈現句子中每一個單字的翻譯與發音。"""
+    """句中單字可以個別點選，不會再次呼叫 AI。"""
 
     breakdown = data.get("word_breakdown", [])
 
     if not breakdown:
         return
 
-    st.markdown("### 逐字翻譯")
-    st.caption("以下翻譯會依照目前句子的語境判斷")
+    st.markdown("### 點選句子中的單字")
+    st.caption("點開單字即可查看語境翻譯、詞性和原形")
 
     language_code = data.get("lang_code", "fr")
+    columns_per_row = 4
 
-    for index, item in enumerate(breakdown):
-        item_word = item.get("word", "")
-        lemma = item.get("lemma", "")
-        phonetic = item.get("phonetic", "")
-        part_of_speech = item.get(
-            "part_of_speech",
-            ""
-        )
-        meaning = item.get("meaning", "")
+    for row_start in range(0, len(breakdown), columns_per_row):
+        row_items = breakdown[row_start:row_start + columns_per_row]
+        columns = st.columns(columns_per_row)
 
-        with st.container(border=True):
-            text_column, audio_column = st.columns(
-                [4, 1]
-            )
+        for offset, item in enumerate(row_items):
+            index = row_start + offset
+            item_word = str(item.get("word", "")).strip()
+            meaning = item.get("meaning", "")
+            phonetic = item.get("phonetic", "")
+            lemma = item.get("lemma", "")
+            part_of_speech = item.get("part_of_speech", "")
 
-            with text_column:
-                st.markdown(
-                    f"**{item_word}**　/{phonetic}/"
-                )
+            if not item_word:
+                continue
 
-                details = []
+            with columns[offset]:
+                with st.popover(item_word, use_container_width=True):
+                    st.markdown(f"### {item_word}")
 
-                if part_of_speech:
-                    details.append(part_of_speech)
+                    if phonetic:
+                        st.caption(f"/{phonetic}/")
 
-                if lemma and lemma.lower() != item_word.lower():
-                    details.append(f"原形：{lemma}")
+                    if meaning:
+                        st.markdown(f"**{meaning}**")
 
-                if details:
-                    st.caption(" · ".join(details))
+                    details = []
 
-                st.write(meaning)
+                    if part_of_speech:
+                        details.append(f"詞性：{part_of_speech}")
 
-            with audio_column:
-                if st.button(
-                    "🔊",
-                    key=(
-                        f"search_word_audio_"
-                        f"{index}_{item_word}"
-                    ),
-                    help=f"播放 {item_word} 的發音"
-                ):
-                    try:
-                        audio_stream = (
-                            nlp_engine.generate_audio(
-                                item_word,
-                                lang=language_code
-                            )
-                        )
+                    if lemma and lemma.lower() != item_word.lower():
+                        details.append(f"原形：{lemma}")
 
-                        if audio_stream:
-                            st.audio(
-                                audio_stream,
-                                format="audio/mp3"
-                            )
+                    if details:
+                        st.caption(" · ".join(details))
 
-                    except Exception:
-                        st.caption("語音離線")
-
+                    play_search_audio(
+                        item_word,
+                        language_code,
+                        key=f"search_word_audio_{index}"
+                    )
 
 def render_search_module():
     """首頁單字與句子搜尋功能。"""
@@ -1091,11 +1086,7 @@ def render_home() -> None:
     brand_header()
     st.markdown(f'<div class="lg-hero-title">{greeting()}</div>', unsafe_allow_html=True)
     st.caption(datetime.now(TAIPEI_TZ).strftime("%A, %B %d"))
-    search_col, button_col = st.columns([5, 1])
-    query = search_col.text_input("單字查詢", placeholder="輸入英文或法文單字", label_visibility="collapsed")
-    if button_col.button("查詢", type="primary", use_container_width=True):
-        analyze_word(query)
-    render_word_result()
+    render_search_module()
     render_stats(get_log(local_today()))
 
     if st.session_state.timer_status in {"running", "paused"}:
