@@ -744,7 +744,348 @@ def render_scenarios() -> None:
                     "word":sentence, "lang_code":"fr", "phonetic":phonetic,
                     "meaning":meaning, "example_sentence":tip, "status":"review",
                 })
+def get_cached_text_analysis(search_text):
+    """依序讀取 Session、Supabase，最後才呼叫 Gemini。"""
 
+    search_text = str(search_text).strip()
+
+    if not search_text:
+        return None
+
+    cache_key = (
+        f"text_analysis_{search_text.lower()}"
+    )
+
+    # 第一層：Session 快取
+    cached_data = st.session_state.get(cache_key)
+
+    if cached_data:
+        return cached_data
+
+    # 第二層：Supabase
+    try:
+        response = (
+            supabase
+            .table("vocabulary")
+            .select("*")
+            .eq("word", search_text)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            database_item = response.data[0]
+
+            analysis_json = database_item.get("analysis_json")
+
+            if isinstance(analysis_json, dict):
+                st.session_state[cache_key] = analysis_json
+                return analysis_json
+
+    except Exception as error:
+        print(f"搜尋 Supabase 快取失敗：{error}")
+
+    # 第三層：Gemini
+    try:
+        analysis_data = ai_service.get_word_analysis(
+            search_text
+        )
+
+        if analysis_data:
+            st.session_state[cache_key] = analysis_data
+
+        return analysis_data
+
+    except Exception as error:
+        print(f"Gemini 搜尋失敗：{error}")
+        return None
+
+
+def save_search_analysis(data):
+    """將完整搜尋分析存入 Supabase。"""
+
+    if not data:
+        return
+
+    database_data = {
+        "word": data.get("word", ""),
+        "lang_code": data.get("lang_code", "fr"),
+        "phonetic": data.get("phonetic", ""),
+        "meaning": data.get("meaning", ""),
+        "example_sentence": data.get(
+            "example_sentence",
+            ""
+        ),
+        "status": "review",
+        "analysis_json": data
+    }
+
+    try:
+        response = (
+            supabase
+            .table("vocabulary")
+            .select("id")
+            .eq("word", database_data["word"])
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            (
+                supabase
+                .table("vocabulary")
+                .update({
+                    "lang_code": database_data["lang_code"],
+                    "phonetic": database_data["phonetic"],
+                    "meaning": database_data["meaning"],
+                    "example_sentence": database_data[
+                        "example_sentence"
+                    ],
+                    "analysis_json": data
+                })
+                .eq("word", database_data["word"])
+                .execute()
+            )
+
+        else:
+            (
+                supabase
+                .table("vocabulary")
+                .insert(database_data)
+                .execute()
+            )
+
+    except Exception as error:
+        st.warning(f"搜尋結果暫時無法同步：{error}")
+
+
+def play_search_audio(text, language_code, key):
+    """顯示發音按鈕並按需產生音訊。"""
+
+    if st.button(
+        "🔊 播放發音",
+        key=key,
+        use_container_width=True
+    ):
+        try:
+            with st.spinner("正在準備發音..."):
+                audio_stream = nlp_engine.generate_audio(
+                    text,
+                    lang=language_code
+                )
+
+            if audio_stream:
+                st.audio(
+                    audio_stream,
+                    format="audio/mp3"
+                )
+            else:
+                st.caption("目前無法產生音訊")
+
+        except Exception:
+            st.warning("語音服務暫時無法使用")
+
+
+def render_word_breakdown(data):
+    """呈現句子中每一個單字的翻譯與發音。"""
+
+    breakdown = data.get("word_breakdown", [])
+
+    if not breakdown:
+        return
+
+    st.markdown("### 逐字翻譯")
+    st.caption("以下翻譯會依照目前句子的語境判斷")
+
+    language_code = data.get("lang_code", "fr")
+
+    for index, item in enumerate(breakdown):
+        item_word = item.get("word", "")
+        lemma = item.get("lemma", "")
+        phonetic = item.get("phonetic", "")
+        part_of_speech = item.get(
+            "part_of_speech",
+            ""
+        )
+        meaning = item.get("meaning", "")
+
+        with st.container(border=True):
+            text_column, audio_column = st.columns(
+                [4, 1]
+            )
+
+            with text_column:
+                st.markdown(
+                    f"**{item_word}**　/{phonetic}/"
+                )
+
+                details = []
+
+                if part_of_speech:
+                    details.append(part_of_speech)
+
+                if lemma and lemma.lower() != item_word.lower():
+                    details.append(f"原形：{lemma}")
+
+                if details:
+                    st.caption(" · ".join(details))
+
+                st.write(meaning)
+
+            with audio_column:
+                if st.button(
+                    "🔊",
+                    key=(
+                        f"search_word_audio_"
+                        f"{index}_{item_word}"
+                    ),
+                    help=f"播放 {item_word} 的發音"
+                ):
+                    try:
+                        audio_stream = (
+                            nlp_engine.generate_audio(
+                                item_word,
+                                lang=language_code
+                            )
+                        )
+
+                        if audio_stream:
+                            st.audio(
+                                audio_stream,
+                                format="audio/mp3"
+                            )
+
+                    except Exception:
+                        st.caption("語音離線")
+
+
+def render_search_module():
+    """首頁單字與句子搜尋功能。"""
+
+    st.markdown("### 查詢")
+
+    search_column, button_column = st.columns(
+        [5, 1],
+        vertical_alignment="bottom"
+    )
+
+    with search_column:
+        search_text = st.text_input(
+            "搜尋英文或法文",
+            placeholder="輸入英文或法文單字、句子",
+            label_visibility="collapsed",
+            key="home_search_input"
+        )
+
+    with button_column:
+        search_submitted = st.button(
+            "查詢",
+            key="home_search_button",
+            type="primary",
+            use_container_width=True
+        )
+
+    if search_submitted:
+        if not search_text.strip():
+            st.warning("請先輸入單字或句子")
+
+        else:
+            with st.spinner("貓咪正在查字典..."):
+                result = get_cached_text_analysis(
+                    search_text
+                )
+
+            if result:
+                st.session_state.search_result = result
+                save_search_analysis(result)
+                st.rerun()
+
+            else:
+                st.error(
+                    "目前無法完成分析，請稍後再試。"
+                )
+
+    data = st.session_state.get("search_result")
+
+    if not data:
+        return
+
+    with st.container(border=True):
+        input_type = data.get(
+            "input_type",
+            "word"
+        )
+        original_text = data.get("word", "")
+        language_code = data.get(
+            "lang_code",
+            "fr"
+        )
+        phonetic = data.get("phonetic", "")
+        meaning = data.get("meaning", "")
+
+        type_label = (
+            "完整句子"
+            if input_type == "sentence"
+            else "單字"
+        )
+
+        st.caption(
+            f"{type_label} · "
+            f"{'法文' if language_code == 'fr' else '英文'}"
+        )
+
+        st.markdown(f"## {original_text}")
+
+        if phonetic:
+            st.caption(f"/{phonetic}/")
+
+        st.markdown("#### 中文翻譯")
+        st.write(meaning)
+
+        play_search_audio(
+            original_text,
+            language_code,
+            key="search_full_audio"
+        )
+
+        st.divider()
+
+        if input_type == "word":
+            st.markdown("#### 實用例句")
+            st.info(
+                data.get("example_sentence", "")
+            )
+            st.caption(
+                data.get("sentence_translation", "")
+            )
+
+            play_search_audio(
+                data.get("example_sentence", ""),
+                language_code,
+                key="search_example_audio"
+            )
+
+        render_word_breakdown(data)
+
+        if st.button(
+            "加入複習卡",
+            key="add_search_to_review",
+            use_container_width=True
+        ):
+            save_word_to_supabase({
+                "word": original_text,
+                "lang_code": language_code,
+                "phonetic": phonetic,
+                "meaning": meaning,
+                "example_sentence": data.get(
+                    "example_sentence",
+                    ""
+                ),
+                "analysis_json": data,
+                "status": "review"
+            })
+
+            st.success("已加入待複習區")
 
 def render_home() -> None:
     brand_header()
