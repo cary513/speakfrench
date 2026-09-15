@@ -812,19 +812,6 @@ def render_word_breakdown(data: dict) -> None:
                         key=f"search_word_audio_{index}",
                     )
 
-你的程式不是「語法錯誤」，而是搜尋區塊尚未完成。最需要確認的是 AIService 裡的方法是否真的叫：
-
-get_word_analysis(query)
-
-以及它實際回傳的 JSON 欄位名稱。現在前端同時使用 translation、chinese_translation、meaning 等不同命名，最好統一資料格式，否則很容易發生「有查詢結果，但畫面沒有翻譯」的情況。
-
-今天 上午9:27
- 目前這個版本無法顯示成功
-
-找到原因了：目前程式只有「定義」render_home()，但沒有真正呼叫它；而且查詢按鈕裡仍然是 pass，因此不會顯示任何搜尋結果。
-
-請將程式最下方的 render_search_module() 替換為：
-
 def render_search_module() -> None:
     """搜尋並顯示單字或完整句子的分析結果。"""
     st.markdown("### 單字與句子查詢")
@@ -1693,3 +1680,7 @@ def render_search_module() -> None:
     )
 
     render_word_breakdown(result)
+
+if __name__ == "__main__":
+    render_home()
+    
