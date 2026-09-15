@@ -136,9 +136,19 @@ st.markdown(
         box-shadow:0 16px 44px rgba(24,24,27,.16); backdrop-filter:blur(16px);
     }
     .st-key-bottom_nav [data-testid="stRadio"]>label { display:none; }
-    .st-key-bottom_nav [data-baseweb="radio"]>div { justify-content:space-around; width:100%; gap:4px; }
+    .st-key-bottom_nav [data-testid="stRadio"] { width:100%; }
+    .st-key-bottom_nav div[role="radiogroup"] {
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        justify-content:space-around!important;
+        align-items:stretch!important;
+        width:100%!important;
+        gap:0!important;
+    }
     .st-key-bottom_nav label {
-        flex:1; justify-content:center; align-items:center; flex-direction:column;
+        flex:1 1 25%!important; width:25%!important; min-width:0!important;
+        justify-content:center; align-items:center; flex-direction:column;
         gap:3px; position:relative; border-radius:0; padding:7px 10px 9px;
         background:transparent!important;
     }
@@ -237,16 +247,18 @@ st.markdown(
             padding:4px 6px;
             border-radius:20px;
         }
-        .st-key-bottom_nav [data-testid="stHorizontalBlock"] {
+        .st-key-bottom_nav div[role="radiogroup"] {
             display:flex!important;
             flex-direction:row!important;
             flex-wrap:nowrap!important;
+            width:100%!important;
         }
-        .st-key-bottom_nav [data-testid="column"] {
+        .st-key-bottom_nav div[role="radiogroup"]>label {
             flex:1 1 25%!important;
             width:25%!important;
             min-width:0!important;
             max-width:25%!important;
+            padding:6px 0 9px!important;
         }
         .st-key-bottom_nav .stButton>button {
             min-height:60px;
@@ -1230,32 +1242,24 @@ def navigate_to(page: str) -> None:
     st.session_state.active_page = page
 
 
+def navigate_from_bottom_nav() -> None:
+    """將底部選單的選擇同步到頁面路由。"""
+    st.session_state.active_page = st.session_state.bottom_nav_selection
+
+
 active_page = st.session_state.active_page
-active_nav_key = NAV_KEYS.get(active_page, "home")
-st.markdown(
-    f"""
-    <style>
-    .st-key-bottom_nav .st-key-nav_{active_nav_key} button::before {{ opacity:1!important; }}
-    .st-key-bottom_nav .st-key-nav_{active_nav_key} button p {{ opacity:1!important; font-weight:750!important; }}
-    .st-key-bottom_nav .st-key-nav_{active_nav_key} button::after {{
-        content:""; position:absolute; bottom:1px; width:18px; height:3px;
-        border-radius:999px; background:var(--lg-orange);
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+if "bottom_nav_selection" not in st.session_state:
+    st.session_state.bottom_nav_selection = active_page
 
 with st.container(key="bottom_nav"):
-    nav_columns = st.columns(len(NAV_ITEMS), gap="small")
-    for nav_column, page in zip(nav_columns, NAV_ITEMS):
-        nav_column.button(
-            page,
-            key=f"nav_{NAV_KEYS[page]}",
-            on_click=navigate_to,
-            args=(page,),
-            use_container_width=True,
-        )
+    st.radio(
+        "頁面導覽",
+        NAV_ITEMS,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="bottom_nav_selection",
+        on_change=navigate_from_bottom_nav,
+    )
 
 active_page = st.session_state.active_page
 
