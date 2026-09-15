@@ -1,159 +1,260 @@
-import os
 import json
+import os
 import re
+from typing import Any
+
 import google.generativeai as genai
+
+try:
+    import streamlit as st
+except ImportError:
+    st = None
 
 
 class AIService:
-    def __init__(self):
-        api_key = os.getenv("GOOGLE_API_KEY")
+    """英文與法文學習內容生成服務。"""
+
+    def __init__(self) -> None:
+        api_key = self._get_api_key()
 
         if not api_key:
             raise ValueError(
-                "AIService：未偵測到 GOOGLE_API_KEY 環境變數"
+                "AIService：未偵測到 GOOGLE_API_KEY。"
+                "請在環境變數或 .streamlit/secrets.toml 中設定。"
             )
 
         genai.configure(api_key=api_key)
 
         self.model = genai.GenerativeModel(
-            model_name="models/gemini-2.5-flash",
+            model_name="gemini-2.5-flash",
             generation_config={
-                "response_mime_type": "application/json"
-            }
+                "response_mime_type": "application/json",
+                "temperature": 0.3,
+            },
         )
 
     @staticmethod
-    def _parse_json(raw_text):
-        """移除可能出現的 Markdown 標記並解析 JSON。"""
+    def _get_api_key() -> str | None:
+        """先讀取環境變數，再讀取 Streamlit Secrets。"""
+        api_key = os.getenv("GOOGLE_API_KEY")
+
+        if api_key:
+            return api_key.strip()
+
+        if st is not None:
+            try:
+                secret_key = st.secrets.get("GOOGLE_API_KEY")
+
+                if secret_key:
+                    return str(secret_key).strip()
+
+            except Exception:
+                pass
+
+        return None
+
+    @staticmethod
+    def _parse_json(raw_text: str | None) -> Any:
+        """移除 Markdown 程式碼標記並解析 JSON。"""
         if not raw_text:
             return None
 
-        cleaned_text = raw_text.strip()
+        cleaned_text = str(raw_text).strip()
+
         cleaned_text = re.sub(
             r"^```(?:json)?\s*",
             "",
             cleaned_text,
-            flags=re.IGNORECASE
+            flags=re.IGNORECASE,
         )
+
         cleaned_text = re.sub(
             r"\s*```$",
             "",
-            cleaned_text
+            cleaned_text,
         )
 
         return json.loads(cleaned_text)
 
     @staticmethod
-    def _validate_analysis(data):
-        """檢查搜尋分析結果格式。"""
+    def _clean_string(value: Any) -> str:
+        """將欄位安全轉換成乾淨字串。"""
+        if value is None:
+            return ""
+
+        cleaned_value = str(value).strip()
+
+        if cleaned_value.casefold() in {
+            "ellipsis",
+            "null",
+            "none",
+            "n/a",
+        }:
+            return ""
+
+        return cleaned_value
+
+    @classmethod
+    def _validate_analysis(
+        cls,
+        data: Any,
+    ) -> dict[str, Any] | None:
+        """驗證並標準化單字／句子分析結果。"""
         if not isinstance(data, dict):
-            return False
+            return None
 
-        required_keys = [
-            "input_type",
-            "word",
-            "lang_code",
-            "phonetic",
-            "meaning",
-            "example_sentence",
-            "sentence_translation",
-            "word_breakdown"
-        ]
+        input_type = cls._clean_string(
+            data.get("input_type")
+        ).lower()
 
-        for key in required_keys:
-            if key not in data:
-                return False
+        lang_code = cls._clean_string(
+            data.get("lang_code")
+        ).lower()
 
-        if data["input_type"] not in ["word", "sentence"]:
-            return False
+        if input_type not in {"word", "sentence"}:
+            return None
 
-        if data["lang_code"] not in ["en", "fr"]:
-            return False
+        if lang_code not in {"en", "fr"}:
+            return None
 
-        for key in [
-            "word",
-            "phonetic",
-            "meaning",
-            "example_sentence",
-            "sentence_translation"
-        ]:
-            value = str(data.get(key, "")).strip()
+        word = cls._clean_string(data.get("word"))
+        phonetic = cls._clean_string(data.get("phonetic"))
+        meaning = cls._clean_string(data.get("meaning"))
 
-            if not value:
-                return False
+        example_sentence = cls._clean_string(
+            data.get("example_sentence")
+        )
 
-            if value.lower() in ["ellipsis", "null", "none"]:
-                return False
+        sentence_translation = cls._clean_string(
+            data.get("sentence_translation")
+        )
 
-        breakdown = data.get("word_breakdown")
+        if not word or not meaning:
+            return None
 
-        if not isinstance(breakdown, list) or not breakdown:
-            return False
+        # IPA 偶爾可能產生失敗，不應因此捨棄整份結果。
+        if not phonetic:
+            phonetic = "暫無發音資料"
 
-        cleaned_breakdown = []
+        if not example_sentence:
+            example_sentence = word
 
-        for item in breakdown:
-            if not isinstance(item, dict):
-                continue
+        if not sentence_translation:
+            sentence_translation = meaning
 
-            item_word = str(item.get("word", "")).strip()
-            item_meaning = str(item.get("meaning", "")).strip()
+        raw_breakdown = data.get("word_breakdown", [])
+        cleaned_breakdown: list[dict[str, str]] = []
 
-            if not item_word or not item_meaning:
-                continue
+        if isinstance(raw_breakdown, list):
+            for item in raw_breakdown:
+                if not isinstance(item, dict):
+                    continue
 
-            cleaned_breakdown.append({
-                "word": item_word,
-                "lemma": str(
-                    item.get("lemma", item_word)
-                ).strip(),
-                "phonetic": str(
-                    item.get("phonetic", "")
-                ).strip(),
-                "part_of_speech": str(
-                    item.get("part_of_speech", "")
-                ).strip(),
-                "meaning": item_meaning
-            })
+                item_word = cls._clean_string(
+                    item.get("word")
+                )
 
+                item_meaning = cls._clean_string(
+                    item.get("meaning")
+                )
+
+                if not item_word or not item_meaning:
+                    continue
+
+                lemma = cls._clean_string(
+                    item.get("lemma")
+                )
+
+                item_phonetic = cls._clean_string(
+                    item.get("phonetic")
+                )
+
+                part_of_speech = cls._clean_string(
+                    item.get("part_of_speech")
+                )
+
+                cleaned_breakdown.append(
+                    {
+                        "word": item_word,
+                        "lemma": lemma or item_word,
+                        "phonetic": item_phonetic,
+                        "part_of_speech": part_of_speech,
+                        "meaning": item_meaning,
+                    }
+                )
+
+        # 如果 Gemini 沒有回傳逐字解析，建立基本資料，
+        # 避免前端完全沒有內容。
         if not cleaned_breakdown:
-            return False
+            cleaned_breakdown = [
+                {
+                    "word": word,
+                    "lemma": word,
+                    "phonetic": phonetic,
+                    "part_of_speech": "",
+                    "meaning": meaning,
+                }
+            ]
 
-        data["word_breakdown"] = cleaned_breakdown
-        return True
+        return {
+            "input_type": input_type,
+            "word": word,
+            "original_text": word,
+            "lang_code": lang_code,
+            "phonetic": phonetic,
+            "meaning": meaning,
+            "translation": meaning,
+            "chinese_translation": meaning,
+            "example_sentence": example_sentence,
+            "sentence_translation": sentence_translation,
+            "word_breakdown": cleaned_breakdown,
+        }
 
-    def get_word_analysis(self, text):
+    def get_word_analysis(
+        self,
+        text: str,
+    ) -> dict[str, Any] | None:
         """
         分析英文或法文的單字／完整句子。
 
-        保留 get_word_analysis 名稱，
-        讓原本 app.py 不需要全面改寫。
+        回傳欄位可直接提供 app.py 顯示：
+        - word
+        - original_text
+        - meaning
+        - translation
+        - chinese_translation
+        - phonetic
+        - example_sentence
+        - sentence_translation
+        - word_breakdown
         """
-        text = str(text).strip()
+        cleaned_input = self._clean_string(text)
 
-        if not text:
+        if not cleaned_input:
             return None
 
         system_prompt = """
 你是一位專業的英語與法語教師，專門協助使用繁體中文的台灣學習者。
 
 使用者可能輸入：
-1. 一個英文或法文單字
-2. 一個英文或法文完整句子
+1. 一個英文單字
+2. 一個法文單字
+3. 一個英文完整句子
+4. 一個法文完整句子
 
-請自動辨識輸入語言與內容類型。
+請自動辨識輸入語言和內容類型，並修正明顯的拼寫或文法錯誤。
 
-請嚴格回傳以下 JSON 格式。
-不要使用 Markdown。
-不要加入 JSON 以外的說明文字。
+請只回傳合法 JSON，不要使用 Markdown，也不要加入說明文字。
+
+JSON 格式：
 
 {
   "input_type": "word 或 sentence",
-  "word": "修正明顯拼寫或文法後的原文",
+  "word": "修正後的完整原文",
   "lang_code": "en 或 fr",
-  "phonetic": "完整輸入內容的 IPA 音標",
-  "meaning": "完整內容的繁體中文翻譯或核心解釋",
-  "example_sentence": "單字請提供自然例句；句子請保留修正後的完整句子",
+  "phonetic": "完整內容的 IPA 音標",
+  "meaning": "完整內容的繁體中文翻譯",
+  "example_sentence": "自然且實用的完整例句",
   "sentence_translation": "example_sentence 的繁體中文翻譯",
   "word_breakdown": [
     {
@@ -161,28 +262,29 @@ class AIService:
       "lemma": "單字原形",
       "phonetic": "單字 IPA 音標",
       "part_of_speech": "繁體中文詞性",
-      "meaning": "單字在目前語境中的繁體中文意思"
+      "meaning": "這個單字在目前語境中的繁體中文意思"
     }
   ]
 }
 
-重要規則：
-1. 自動判斷輸入是英文或法文。
-2. 自動判斷輸入是單字或完整句子。
-3. 修正明顯拼寫或文法錯誤，但不可改變原意。
-4. word_breakdown 必須按照原句順序列出每一個單字。
-5. 重複出現的單字也必須保留。
-6. 不要將標點符號獨立列為單字。
-7. 法文縮合形式如 j'aime、l'école、c'est，必須保留自然形式。
-8. meaning 必須根據目前句子的語境翻譯。
-9. 若輸入只有一個單字，word_breakdown 仍須包含該單字。
-10. 每個欄位都不可缺少或留空。
-11. 不可回傳 Ellipsis、null、None 或無意義資料。
+規則：
+1. input_type 只能是 word 或 sentence。
+2. lang_code 只能是 en 或 fr。
+3. 修正文法時不可改變使用者原意。
+4. meaning 必須是完整原文的繁體中文翻譯。
+5. word_breakdown 必須按照原句順序列出每一個單字。
+6. 重複出現的單字也必須保留。
+7. 不要把標點符號獨立列為單字。
+8. 法文縮合形式如 j'aime、l'école、c'est 必須保留。
+9. 單字翻譯必須符合目前句子的語境。
+10. 如果輸入只有一個單字，word_breakdown 仍須包含該單字。
+11. 所有欄位都必須存在。
+12. 不可回傳 null、None、Ellipsis 或空白內容。
 """
 
         user_prompt = (
             "請分析以下英文或法文內容：\n"
-            f"{text}"
+            f"{cleaned_input}"
         )
 
         try:
@@ -190,28 +292,41 @@ class AIService:
                 [system_prompt, user_prompt]
             )
 
-            data = self._parse_json(response.text)
+            raw_response = getattr(response, "text", None)
 
-            if not self._validate_analysis(data):
-                print("get_word_analysis：AI 回傳格式不完整")
-                return None
+            if not raw_response:
+                raise RuntimeError(
+                    "Gemini 沒有回傳文字內容"
+                )
 
-            return data
+            parsed_data = self._parse_json(raw_response)
+            validated_data = self._validate_analysis(parsed_data)
+
+            if not validated_data:
+                raise ValueError(
+                    "Gemini 回傳的 JSON 格式不完整"
+                )
+
+            return validated_data
 
         except json.JSONDecodeError as error:
-            print(f"Gemini JSON 解析錯誤：{error}")
-            return None
+            raise RuntimeError(
+                f"Gemini JSON 解析失敗：{error}"
+            ) from error
 
         except Exception as error:
-            print(f"get_word_analysis 錯誤：{error}")
-            return None
+            raise RuntimeError(
+                f"Gemini 分析失敗：{error}"
+            ) from error
 
     def generate_phrases_by_category(
         self,
         category_key: str,
-        user_profile: dict
-    ) -> list:
-        """根據個人資訊與情境生成三個法文句子。"""
+        user_profile: dict[str, Any] | None,
+    ) -> list[dict[str, str]]:
+        """根據個人資訊與指定情境生成三個法文句子。"""
+        if not isinstance(user_profile, dict):
+            user_profile = {}
 
         category_mapping = {
             "workplace": (
@@ -220,166 +335,313 @@ class AIService:
             ),
             "daily": (
                 "日常生活，例如市集買菜、咖啡廳點單、"
-                "路上問路、與鄰居打招呼"
+                "路上問路及與鄰居打招呼"
             ),
             "airport": (
-                "機場通關，例如行李托運、海關問答、"
+                "機場通關，例如行李托運、海關問答及"
                 "尋找登機門"
             ),
             "shopping": (
                 "購物消費，例如服飾店挑選、退換貨、"
-                "詢問折扣、結帳"
+                "詢問折扣及結帳"
             ),
             "restaurant": (
                 "餐廳點菜，例如預約位子、詢問今日特餐、"
-                "點餐、結帳與打包"
+                "點餐、結帳及打包"
             ),
             "self_intro": (
                 "自我介紹，例如認識新朋友或向社團介紹自己"
             ),
             "social": (
-                "交友、興趣與價值觀交流，例如小酒館聊天、"
+                "交友、興趣與價值觀交流，例如聊天、"
                 "分享休閒活動與個人觀點"
-            )
+            ),
         }
 
         category_desc = category_mapping.get(
             category_key,
-            category_key
+            category_key or "日常生活",
         )
 
-        display_name = user_profile.get(
-            "display_name",
-            "Cary"
-        )
-        current_level = user_profile.get(
-            "current_level",
-            "A2"
-        )
-        learning_goal = user_profile.get(
-            "learning_goal",
-            "在法國咖啡廳或麵包店工作、文化探索"
-        )
-        interests = user_profile.get(
-            "interests",
-            "喜歡爬山、自由潛水、滑板、R&B 音樂和貓"
-        )
+        display_name = self._clean_string(
+            user_profile.get("display_name")
+        ) or "Cary"
+
+        current_level = self._clean_string(
+            user_profile.get("current_level")
+        ) or "A2"
+
+        learning_goal = self._clean_string(
+            user_profile.get("learning_goal")
+        ) or "使用自然法語完成日常交流"
+
+        interests = self._clean_string(
+            user_profile.get("interests")
+        ) or "旅行、設計、音樂和貓"
 
         prompt = f"""
-你是一位精通現代法語的母語教師，熟悉法國日常口語、
-巴黎生活、常見慣用語、Slang 與 Verlan。
+你是一位精通現代法語的母語教師，熟悉法國日常口語和文化。
 
-請為以下使用者生成三個符合指定情境、自然且實用的法文句子。
+請為以下使用者生成剛好三個符合指定情境、自然且實用的法文句子。
 
-【指定情境】
+指定情境：
 {category_desc}
 
-【使用者資料】
+使用者資料：
 稱呼：{display_name}
 程度：{current_level}
 學習目標：{learning_goal}
-興趣與價值觀：{interests}
+興趣：{interests}
 
-生成原則：
-1. 必須符合指定情境。
-2. 使用現代、自然且實用的法語。
-3. 避免過時或過度正式的教科書句型。
-4. 內容必須符合使用者目前程度。
-5. 若為自我介紹或社交情境，自然融入使用者興趣。
-6. cultural_tip 必須解釋使用情境、語氣與文化差異。
+生成規則：
+1. 必須生成剛好三個不同的句子。
+2. 每個句子都必須符合指定情境。
+3. 使用現代、自然且實用的法語。
+4. 避免過時或過度正式的教科書句型。
+5. 難度必須符合使用者程度。
+6. cultural_tip 必須使用繁體中文。
+7. phonetic 請優先提供 IPA。
+8. 每個欄位都不可留空。
 
-嚴格回傳以下 JSON 陣列，不要加入其他文字：
+請只回傳合法 JSON 陣列：
 
 [
   {{
     "french_sentence": "法文句子",
-    "phonetic": "IPA 或適合台灣學習者的發音提示",
+    "phonetic": "IPA 發音",
     "chinese_translation": "繁體中文翻譯",
-    "cultural_tip": "文化、語氣與口語使用說明"
+    "cultural_tip": "使用情境、語氣和文化說明"
+  }},
+  {{
+    "french_sentence": "法文句子",
+    "phonetic": "IPA 發音",
+    "chinese_translation": "繁體中文翻譯",
+    "cultural_tip": "使用情境、語氣和文化說明"
+  }},
+  {{
+    "french_sentence": "法文句子",
+    "phonetic": "IPA 發音",
+    "chinese_translation": "繁體中文翻譯",
+    "cultural_tip": "使用情境、語氣和文化說明"
   }}
 ]
 """
 
         try:
             response = self.model.generate_content(prompt)
-            result = self._parse_json(response.text)
+            raw_response = getattr(response, "text", None)
 
-            if isinstance(result, list):
-                return result
+            if not raw_response:
+                raise RuntimeError(
+                    "Gemini 沒有回傳情境句子"
+                )
 
-            if isinstance(result, dict):
-                for value in result.values():
-                    if isinstance(value, list):
-                        return value
+            parsed_result = self._parse_json(raw_response)
 
-            return []
+            if isinstance(parsed_result, dict):
+                possible_lists = [
+                    value
+                    for value in parsed_result.values()
+                    if isinstance(value, list)
+                ]
+
+                parsed_result = (
+                    possible_lists[0]
+                    if possible_lists
+                    else []
+                )
+
+            if not isinstance(parsed_result, list):
+                raise ValueError(
+                    "情境句子的回傳格式不是陣列"
+                )
+
+            cleaned_results: list[dict[str, str]] = []
+
+            for item in parsed_result:
+                if not isinstance(item, dict):
+                    continue
+
+                french_sentence = self._clean_string(
+                    item.get("french_sentence")
+                )
+
+                phonetic = self._clean_string(
+                    item.get("phonetic")
+                )
+
+                chinese_translation = self._clean_string(
+                    item.get("chinese_translation")
+                )
+
+                cultural_tip = self._clean_string(
+                    item.get("cultural_tip")
+                )
+
+                if not french_sentence or not chinese_translation:
+                    continue
+
+                cleaned_results.append(
+                    {
+                        "french_sentence": french_sentence,
+                        "phonetic": phonetic,
+                        "chinese_translation": chinese_translation,
+                        "cultural_tip": cultural_tip,
+                    }
+                )
+
+            if not cleaned_results:
+                raise ValueError(
+                    "Gemini 沒有產生有效的情境句子"
+                )
+
+            return cleaned_results[:3]
 
         except Exception as error:
             print(f"Gemini 情境生成錯誤：{error}")
+            return self._fallback_phrases(category_key)
 
-            mock_data_pool = {
-                "restaurant": [
-                    {
-                        "french_sentence": (
-                            "Je pourrais avoir un café allongé "
-                            "et un croissant, s'il vous plaît ?"
-                        ),
-                        "phonetic": (
-                            "熱 普黑 阿瓦赫 安 卡菲 阿隆惹 "
-                            "欸 安 誇桑，希爾 物 普雷"
-                        ),
-                        "chinese_translation": (
-                            "麻煩給我一杯美式咖啡和一個可頌。"
-                        ),
-                        "cultural_tip": (
-                            "在法國，café allongé 是常見的"
-                            "長咖啡說法，比 Americano 更自然。"
-                        )
-                    }
-                ],
-                "workplace": [
-                    {
-                        "french_sentence": (
-                            "Désolé, on est un peu sous l'eau "
-                            "ce matin avec le coup de feu."
-                        ),
-                        "phonetic": (
-                            "得佐雷，翁 奈 安 波 蘇 洛，"
-                            "瑟 馬丹 阿維克 勒 庫 德 佛"
-                        ),
-                        "chinese_translation": (
-                            "抱歉，今天早上的尖峰時段"
-                            "我們有點忙不過來。"
-                        ),
-                        "cultural_tip": (
-                            "être sous l'eau 表示工作太多；"
-                            "coup de feu 常指餐飲業尖峰時段。"
-                        )
-                    }
-                ],
-                "self_intro": [
-                    {
-                        "french_sentence": (
-                            "J'adore la randonnée, ça me permet "
-                            "de déconnecter après le travail."
-                        ),
-                        "phonetic": (
-                            "札多赫 拉 夯多內，薩 默 佩赫梅 "
-                            "德 德科內克泰 阿普黑 勒 特哈瓦伊"
-                        ),
-                        "chinese_translation": (
-                            "我很喜歡健行，這讓我下班後"
-                            "可以放空和休息。"
-                        ),
-                        "cultural_tip": (
-                            "déconnecter 在日常法語中可表示"
-                            "暫時離開工作與壓力。"
-                        )
-                    }
-                ]
-            }
+    @staticmethod
+    def _fallback_phrases(
+        category_key: str,
+    ) -> list[dict[str, str]]:
+        """Gemini 暫時無法使用時顯示的備用句子。"""
+        fallback_data = {
+            "restaurant": [
+                {
+                    "french_sentence": (
+                        "Je voudrais un café, s'il vous plaît."
+                    ),
+                    "phonetic": (
+                        "/ʒə vu.dʁɛ œ̃ ka.fe sil vu plɛ/"
+                    ),
+                    "chinese_translation": (
+                        "我想要一杯咖啡，謝謝。"
+                    ),
+                    "cultural_tip": (
+                        "使用 Je voudrais 比直接說 Je veux 更有禮貌。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "Qu'est-ce que vous recommandez ?"
+                    ),
+                    "phonetic": (
+                        "/kɛs kə vu ʁə.kɔ.mɑ̃.de/"
+                    ),
+                    "chinese_translation": (
+                        "您推薦什麼？"
+                    ),
+                    "cultural_tip": (
+                        "適合詢問服務人員推薦的餐點。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "L'addition, s'il vous plaît."
+                    ),
+                    "phonetic": (
+                        "/la.di.sjɔ̃ sil vu plɛ/"
+                    ),
+                    "chinese_translation": (
+                        "麻煩結帳。"
+                    ),
+                    "cultural_tip": (
+                        "這是在法國餐廳請服務人員結帳的自然說法。"
+                    ),
+                },
+            ],
+            "workplace": [
+                {
+                    "french_sentence": (
+                        "Je vais terminer cette tâche cet après-midi."
+                    ),
+                    "phonetic": (
+                        "/ʒə vɛ tɛʁ.mi.ne sɛt taʃ sɛ.ta.pʁɛ.mi.di/"
+                    ),
+                    "chinese_translation": (
+                        "我今天下午會完成這項工作。"
+                    ),
+                    "cultural_tip": (
+                        "適合用來向同事說明工作進度。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "Est-ce que tu peux m'aider ?"
+                    ),
+                    "phonetic": (
+                        "/ɛs kə ty pø mɛ.de/"
+                    ),
+                    "chinese_translation": (
+                        "你可以幫我嗎？"
+                    ),
+                    "cultural_tip": (
+                        "對熟悉的同事可使用 tu；正式場合改用 vous。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "On peut en discuter demain."
+                    ),
+                    "phonetic": (
+                        "/ɔ̃ pø ɑ̃ dis.ky.te də.mɛ̃/"
+                    ),
+                    "chinese_translation": (
+                        "我們明天可以討論這件事。"
+                    ),
+                    "cultural_tip": (
+                        "On 在日常職場口語中常用來表示「我們」。"
+                    ),
+                },
+            ],
+            "default": [
+                {
+                    "french_sentence": (
+                        "Bonjour, comment allez-vous ?"
+                    ),
+                    "phonetic": (
+                        "/bɔ̃.ʒuʁ kɔ.mɑ̃ ta.le vu/"
+                    ),
+                    "chinese_translation": (
+                        "您好，您最近好嗎？"
+                    ),
+                    "cultural_tip": (
+                        "適合第一次見面或較正式的場合。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "J'apprends le français en ce moment."
+                    ),
+                    "phonetic": (
+                        "/ʒa.pʁɑ̃ lə fʁɑ̃.sɛ ɑ̃ sə mɔ.mɑ̃/"
+                    ),
+                    "chinese_translation": (
+                        "我目前正在學法文。"
+                    ),
+                    "cultural_tip": (
+                        "適合在自我介紹時說明自己的學習狀態。"
+                    ),
+                },
+                {
+                    "french_sentence": (
+                        "J'aime découvrir de nouvelles choses."
+                    ),
+                    "phonetic": (
+                        "/ʒɛm de.ku.vʁiʁ də nu.vɛl ʃoz/"
+                    ),
+                    "chinese_translation": (
+                        "我喜歡探索新事物。"
+                    ),
+                    "cultural_tip": (
+                        "適合用來分享自己的個性或興趣。"
+                    ),
+                },
+            ],
+        }
 
-            return mock_data_pool.get(
-                category_key,
-                mock_data_pool["self_intro"]
-            )
+        return fallback_data.get(
+            category_key,
+            fallback_data["default"],
+        )
