@@ -241,6 +241,7 @@ STATE_DEFAULTS = {
     "daily_logs":{}, "selected_log_date":local_today(), "show_daily_log_form":False,
     "show_monthly_report":False, "quiz_index":0, "quiz_questions":[],
     "quiz_score":0, "quiz_answered":False, "persistence_error":None,
+    "search_result":None, "search_error":None,
 }
 for state_key, default_value in STATE_DEFAULTS.items():
     if state_key not in st.session_state:
@@ -419,17 +420,14 @@ if st.session_state.get("persistence_error"):
 
 
 # =========================================================
-# 3.1 項目 3：發音加入快取
+# 3.1 發音快取
 # =========================================================
 @st.cache_data(show_spinner=False, ttl=86400)
-def get_cached_audio(text, language_code):
-    """同一文字一天內只產生一次語音。"""
+def get_cached_audio(text: str, language_code: str):
+    """同一段文字一天內只產生一次語音。"""
     if not text:
         return None
-    return nlp_engine.generate_audio(
-        text,
-        lang=language_code
-    )
+    return nlp_engine.generate_audio(text, lang=language_code)
 
 
 # =========================================================
@@ -563,95 +561,271 @@ def reset_timer() -> None:
     save_timer_state()
 
 
-# =========================================================
-# 5. 項目 2：更新 render_word_breakdown (單字可點選展開翻譯)
-# =========================================================
-def render_word_breakdown(data):
-    """句中單字可以個別點選，不會再次呼叫 AI。"""
+def render_stats(log: dict, eyebrow: str = "今日學習數據") -> None:
+    study_seconds = int(log.get("study_seconds", 0))
+    study_minutes = "<1" if 0 < study_seconds < 60 else str(study_seconds // 60)
+    st.markdown(
+        f"""
+        <div class="lg-card"><div class="lg-eyebrow">{eyebrow}</div>
+          <div class="lg-stats">
+            <div class="lg-stat"><div class="lg-stat-label">學習時間</div><div class="lg-stat-value">{study_minutes}</div><div class="lg-stat-unit">分鐘</div></div>
+            <div class="lg-stat"><div class="lg-stat-label">複習卡</div><div class="lg-stat-value">{int(log.get('remembered_cards',0))}</div><div class="lg-stat-unit">張</div></div>
+            <div class="lg-stat"><div class="lg-stat-label">A2 刷題</div><div class="lg-stat-value">{int(log.get('quiz_count',0))}</div><div class="lg-stat-unit">題</div></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    breakdown = data.get("word_breakdown", [])
 
-    if not breakdown:
+def render_timer_scene() -> None:
+    base_seconds, goal_seconds = timer_elapsed(), DAILY_GOAL_MINUTES * 60
+    running = st.session_state.timer_status == "running"
+    render_lottie_state(
+        "learning" if running else "paused",
+        height=270,
+        loop=True,
+        key="cat_learning" if running else "cat_paused",
+    )
+    components.html(
+        f"""
+        <div class="scene"><div class="paris">NEXT STOP · PARIS</div><div class="tower">♜</div>
+          <div id="traveller" class="traveller">●</div><div class="path"></div>
+          <div id="clock" class="clock">00:00:00</div><div class="goal">今日目標 {DAILY_GOAL_MINUTES} 分鐘</div>
+        </div>
+        <style>
+          body{{margin:0;font-family:Arial,sans-serif;color:#171717}}
+          .scene{{position:relative;height:175px;overflow:hidden;border-radius:24px;background:#fff}}
+          .paris{{position:absolute;left:24px;top:22px;color:#999;letter-spacing:.18em;font-size:11px}}
+          .tower{{position:absolute;right:38px;bottom:18px;font-size:72px;color:#3a3a3a;transform:scaleX(.7)}}
+          .path{{position:absolute;left:30px;right:70px;bottom:32px;border-bottom:3px dotted #F7A916}}
+          .traveller{{position:absolute;left:28px;bottom:24px;color:#F7A916;font-size:20px;transition:left .4s linear}}
+          .clock{{text-align:center;font-size:42px;font-weight:750;padding-top:55px;letter-spacing:-.03em}}
+          .goal{{text-align:center;color:#7D818A;margin-top:7px;font-size:14px}}
+        </style>
+        <script>
+          const base={base_seconds},running={str(running).lower()},goal={goal_seconds},started=Date.now();
+          function draw(){{const e=base+(running?Math.floor((Date.now()-started)/1000):0);
+            const h=String(Math.floor(e/3600)).padStart(2,'0'),m=String(Math.floor((e%3600)/60)).padStart(2,'0'),s=String(e%60).padStart(2,'0');
+            document.getElementById('clock').textContent=`${{h}}:${{m}}:${{s}}`;
+            document.getElementById('traveller').style.left=`calc(28px + ${{Math.min(e/goal,1)}} * 58%)`;}}
+          draw();setInterval(draw,500);
+        </script>
+        """,
+        height=185,
+    )
+
+
+def render_daily_log_form(target_date: date) -> None:
+    log = get_log(target_date).copy()
+    st.markdown("### 完成學習紀錄")
+    with st.form(f"daily_log_{target_date.isoformat()}"):
+        mood = st.radio(
+            "今天學習的心情如何？", MOODS,
+            index=MOODS.index(log.get("mood", "普通")) if log.get("mood") in MOODS else 2,
+            horizontal=True, format_func=lambda v:f"{MOOD_ICONS[MOODS.index(v)]} {v}",
+        )
+        journal = st.text_area(
+            "心情日記", value=log.get("journal", ""),
+            placeholder="今天學習時，哪一刻讓你感覺自己進步了？", height=130, max_chars=500,
+        )
+        if st.form_submit_button("儲存學習紀錄", type="primary", use_container_width=True):
+            log["mood"], log["journal"] = mood, journal.strip()
+            if save_daily_log(log, notify=True):
+                st.session_state.show_daily_log_form = False
+                st.session_state.timer_status = "results"
+                save_timer_state()
+                st.rerun()
+
+
+# =========================================================
+# 5. 首頁
+# =========================================================
+def analyze_word(word_input: str) -> None:
+    normalized = word_input.strip()
+    if not normalized:
+        st.warning("請先輸入英文或法文單字。")
+        return
+    cache_key = f"word_cache_{normalized.lower()}"
+    data = st.session_state.get(cache_key)
+    if not data:
+        try:
+            rows = supabase.table("vocabulary").select("*").eq("word", normalized).execute().data or []
+            if rows:
+                row = rows[0]
+                data = {
+                    "word":row.get("word", normalized), "lang_code":row.get("lang_code", "fr"),
+                    "phonetic":row.get("phonetic", ""), "meaning":row.get("meaning", ""),
+                    "example_sentence":row.get("example_sentence", ""), "sentence_translation":"",
+                }
+        except Exception:
+            data = None
+    if not data:
+        loading = render_loading_animation("貓咪正在整理單字資料…", "loading_word_analysis")
+        try:
+            data = ai_service.get_word_analysis(normalized)
+        except Exception:
+            st.error("AI 服務目前忙碌，請稍候一分鐘再試。")
+            return
+        finally:
+            loading.empty()
+    if data:
+        st.session_state[cache_key] = data
+        st.session_state.current_data = data
+        save_word_to_supabase({
+            "word":data.get("word", normalized), "lang_code":data.get("lang_code", "fr"),
+            "phonetic":data.get("phonetic", ""), "meaning":data.get("meaning", ""),
+            "example_sentence":data.get("example_sentence", ""), "status":"review",
+        })
+
+
+def render_word_result() -> None:
+    data = st.session_state.get("current_data")
+    if not data:
+        return
+    word, phonetic = html.escape(str(data.get("word", ""))), html.escape(str(data.get("phonetic", "")))
+    meaning, example = html.escape(str(data.get("meaning", ""))), html.escape(str(data.get("example_sentence", "")))
+    st.markdown(
+        f'<div class="lg-card"><div class="lg-eyebrow">單字解析</div><h2>{word}</h2><p>/{phonetic}/ · {html.escape(str(data.get("lang_code","fr")))}</p><div class="lg-note"><strong>{meaning}</strong></div><p>{example}</p></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("播放發音", key="home_audio"):
+        try:
+            audio = nlp_engine.generate_audio(data.get("word", ""), lang=data.get("lang_code", "fr"))
+            if audio:
+                st.audio(audio, format="audio/mp3")
+        except Exception:
+            st.warning("語音服務暫時無法使用。")
+
+
+def render_scenarios() -> None:
+    categories = {
+        "職場用語":"workplace", "日常生活":"daily", "機場通關":"airport",
+        "購物消費":"shopping", "餐廳點菜":"restaurant", "自我介紹":"self_intro",
+        "交友與價值觀":"social",
+    }
+    with st.expander("情境句型與個人化設定"):
+        if not st.session_state.user_profile:
+            with st.form("profile_form"):
+                name = st.text_input("如何稱呼你？", placeholder="例如：Cary")
+                level = st.selectbox("目前程度", ["入門級 (A1)", "初級實用 (A2)", "中級流利 (B1)", "進階商務 (B2)"])
+                goal = st.text_input("學習目標", placeholder="例如：能在法國生活與工作")
+                interests = st.text_area("興趣與日常", placeholder="讓 AI 生成更貼近你的情境")
+                if st.form_submit_button("建立個人化設定", type="primary"):
+                    if name and goal:
+                        profile = {"display_name":name, "current_level":level, "learning_goal":goal, "interests":interests}
+                        st.session_state.user_profile = profile
+                        save_profile_to_supabase(profile)
+                        st.rerun()
+                    else:
+                        st.warning("請填寫稱呼與學習目標。")
+            return
+        label = st.selectbox("選擇練習情境", list(categories.keys()))
+        category = categories[label]
+        cache_key = f"cache_phrases_{category}"
+        if st.button("產生情境句型", type="primary"):
+            loading = render_loading_animation("正在準備你的情境句型…", "loading_scenarios")
+            try:
+                items = ai_service.generate_phrases_by_category(category, st.session_state.user_profile)
+            except Exception:
+                items = []
+            finally:
+                loading.empty()
+            st.session_state[cache_key] = items
+            auto_save_generated_phrases_to_db(items)
+        for index, item in enumerate(st.session_state.get(cache_key, [])):
+            sentence = item.get("french_sentence") or item.get("French_sentence") or ""
+            phonetic = item.get("phonetic") or item.get("Phonetic") or ""
+            meaning = item.get("chinese_translation") or item.get("meaning") or ""
+            tip = item.get("cultural_tip") or item.get("example_sentence") or ""
+            st.markdown(f"### {sentence}")
+            st.caption(f"/{phonetic}/")
+            st.write(meaning)
+            if tip:
+                st.info(tip)
+            left, right = st.columns(2)
+            if left.button("播放", key=f"phrase_audio_{category}_{index}", use_container_width=True):
+                try:
+                    audio = nlp_engine.generate_audio(sentence, lang="fr")
+                    if audio:
+                        st.audio(audio, format="audio/mp3")
+                except Exception:
+                    st.warning("語音暫時無法播放。")
+            if right.button("加入複習卡", key=f"phrase_save_{category}_{index}", use_container_width=True):
+                save_word_to_supabase({
+                    "word":sentence, "lang_code":"fr", "phonetic":phonetic,
+                    "meaning":meaning, "example_sentence":tip, "status":"review",
+                })
+
+
+def play_search_audio(text: str, language_code: str) -> None:
+    """顯示搜尋內容的發音播放器。"""
+    try:
+        audio_stream = get_cached_audio(text, language_code)
+        if audio_stream:
+            st.audio(audio_stream, format="audio/mp3")
+    except Exception as exc:
+        st.warning(f"語音服務暫時無法使用：{exc}")
+
+
+def render_word_breakdown(data: dict) -> None:
+    """以可展開卡片顯示句中每個單字的語境意思。"""
+    breakdown = data.get("word_breakdown") or []
+    if not isinstance(breakdown, list) or not breakdown:
         return
 
     st.markdown("### 點選句子中的單字")
     st.caption("點開單字即可查看語境翻譯、詞性和原形")
-
-    language_code = data.get("lang_code", "fr")
+    language_code = str(data.get("lang_code") or "fr")
     columns_per_row = 4
 
     for row_start in range(0, len(breakdown), columns_per_row):
         row_items = breakdown[row_start:row_start + columns_per_row]
-        columns = st.columns(columns_per_row)
+        columns = st.columns(len(row_items))
 
         for offset, item in enumerate(row_items):
-            index = row_start + offset
-            item_word = str(item.get("word", "")).strip()
-            meaning = item.get("meaning", "")
-            phonetic = item.get("phonetic", "")
-            lemma = item.get("lemma", "")
-            part_of_speech = item.get("part_of_speech", "")
+            if not isinstance(item, dict):
+                continue
 
+            item_word = str(item.get("word") or "").strip()
             if not item_word:
                 continue
 
+            meaning = str(item.get("meaning") or "")
+            phonetic = str(item.get("phonetic") or "")
+            lemma = str(item.get("lemma") or "")
+            part_of_speech = str(item.get("part_of_speech") or "")
+
             with columns[offset]:
                 with st.popover(item_word, use_container_width=True):
-                    st.markdown(f"### {item_word}")
-
+                    st.markdown(f"### {html.escape(item_word)}")
                     if phonetic:
                         st.caption(f"/{phonetic}/")
-
                     if meaning:
-                        st.markdown(f"**{meaning}**")
+                        st.markdown(f"**{html.escape(meaning)}**")
 
                     details = []
-
                     if part_of_speech:
-                        details.append(f"詞性：{part_of_speech}")
-
-                    if lemma and lemma.lower() != item_word.lower():
-                        details.append(f"原形：{lemma}")
-
+                        details.append(f"詞性：{html.escape(part_of_speech)}")
+                    if lemma and lemma.casefold() != item_word.casefold():
+                        details.append(f"原形：{html.escape(lemma)}")
                     if details:
                         st.caption(" · ".join(details))
 
-                    play_search_audio(
-                        item_word,
-                        language_code,
-                        key=f"search_word_audio_{index}"
-                    )
-
-
-# 假設 play_search_audio 呼叫方式 (運用快取版本)
-def play_search_audio(text, language_code, key):
-    audio_stream = get_cached_audio(
-        text,
-        language_code
-    )
-    if audio_stream:
-        st.audio(audio_stream, format="audio/mp3")
-
-
-# =========================================================
-# 6. 項目 1：首頁改用新版搜尋 (修改 render_home)
-# =========================================================
-def render_home() -> None:
-    brand_header()
-    
-    # 這裡放入你原有的首頁頂部資訊...
-    today_log = get_log(local_today())
-    
-    # 渲染新版搜尋模組
-    render_search_module()
+                    try:
+                        audio_stream = get_cached_audio(item_word, language_code)
+                        if audio_stream:
+                            st.audio(audio_stream, format="audio/mp3")
+                    except Exception:
+                        st.caption("語音暫時無法使用")
 
 
 def render_search_module() -> None:
-    """搜尋並顯示單字或完整句子的分析結果。"""
+    """搜尋英文或法文單字及完整句子。"""
     st.markdown("### 單字與句子查詢")
 
     query = st.text_input(
-        "單字查詢",
+        "單字與句子查詢",
         placeholder="輸入英文或法文單字／句子",
         label_visibility="collapsed",
         key="search_query",
@@ -664,40 +838,24 @@ def render_search_module() -> None:
         key="search_button",
     ):
         cleaned_query = query.strip()
-
         if not cleaned_query:
-            st.warning("請輸入要查詢的單字或句子。")
+            st.warning("請先輸入要查詢的單字或句子。")
         else:
             loading = render_loading_animation(
                 "正在分析內容…",
                 key="search_loading",
             )
-
             try:
                 result = ai_service.get_word_analysis(cleaned_query)
-
-                # AIService 如果回傳 JSON 字串，先轉成 dict
                 if isinstance(result, str):
                     result = json.loads(result)
-
                 if not isinstance(result, dict):
-                    raise TypeError(
-                        f"AI 回傳格式錯誤：預期 dict，實際為 {type(result).__name__}"
-                    )
-
+                    raise TypeError("AI 沒有回傳有效的分析資料")
                 st.session_state.search_result = result
                 st.session_state.search_error = None
-
-            except json.JSONDecodeError as exc:
-                st.session_state.search_result = None
-                st.session_state.search_error = (
-                    f"AI 回傳的內容不是有效 JSON：{exc}"
-                )
-
             except Exception as exc:
                 st.session_state.search_result = None
                 st.session_state.search_error = f"查詢失敗：{exc}"
-
             finally:
                 loading.empty()
 
@@ -716,102 +874,367 @@ def render_search_module() -> None:
         or result.get("word")
         or query
     )
-
     translation = (
         result.get("chinese_translation")
         or result.get("translation")
         or result.get("meaning")
         or "目前沒有翻譯"
     )
-
-    phonetic = result.get("phonetic") or ""
-    language_code = result.get("lang_code") or "fr"
+    phonetic = str(result.get("phonetic") or "")
+    language_code = str(result.get("lang_code") or "fr")
+    input_type = str(result.get("input_type") or "word")
 
     st.markdown('<div class="lg-card">', unsafe_allow_html=True)
+    st.caption(
+        f"{'完整句子' if input_type == 'sentence' else '單字'} · "
+        f"{'法文' if language_code == 'fr' else '英文'}"
+    )
     st.markdown(f"## {html.escape(str(original_text))}")
-
     if phonetic:
         st.caption(f"/{phonetic}/")
+    st.markdown(f"**完整翻譯：** {html.escape(str(translation))}")
+    play_search_audio(str(original_text), language_code)
 
-    st.markdown(
-        f"**完整翻譯：** {html.escape(str(translation))}"
-    )
+    if input_type == "word":
+        example = str(result.get("example_sentence") or "")
+        example_translation = str(result.get("sentence_translation") or "")
+        if example:
+            st.markdown("#### 實用例句")
+            st.info(example)
+            if example_translation:
+                st.caption(example_translation)
 
-    play_search_audio(
-        str(original_text),
-        language_code,
-        key="search_sentence_audio",
-    )
+    if st.button(
+        "加入複習卡",
+        key="add_search_to_review",
+        use_container_width=True,
+    ):
+        save_word_to_supabase({
+            "word": str(original_text),
+            "lang_code": language_code,
+            "phonetic": phonetic,
+            "meaning": str(translation),
+            "example_sentence": str(result.get("example_sentence") or ""),
+            "status": "review",
+        })
 
     st.markdown("</div>", unsafe_allow_html=True)
-
     render_word_breakdown(result)
 
 
-def render_word_breakdown(data: dict) -> None:
-    """顯示句中每個單字的語境翻譯、詞性、原形及發音。"""
-    breakdown = data.get("word_breakdown") or []
+def render_home() -> None:
+    brand_header()
+    st.markdown(f'<div class="lg-hero-title">{greeting()}</div>', unsafe_allow_html=True)
+    st.caption(datetime.now(TAIPEI_TZ).strftime("%A, %B %d"))
+    render_search_module()
+    render_stats(get_log(local_today()))
 
-    if not isinstance(breakdown, list) or not breakdown:
-        st.info("目前沒有可顯示的單字解析。")
+    if st.session_state.timer_status in {"running", "paused"}:
+        render_timer_scene()
+        left, right = st.columns(2)
+        if st.session_state.timer_status == "running":
+            if left.button("暫停", use_container_width=True):
+                pause_timer(); st.rerun()
+        elif left.button("繼續", type="primary", use_container_width=True):
+            start_timer(); st.rerun()
+        if right.button("結束學習", use_container_width=True):
+            finish_timer(); st.rerun()
+    elif st.session_state.timer_status == "completed":
+        render_lottie_state("completed", height=290, loop=False, key="cat_completed")
+        st.success("今日學習完成！你又向目標靠近了一點。")
+        if st.button("查看並完成今日紀錄", type="primary", use_container_width=True):
+            st.session_state.show_daily_log_form = True
+    elif st.session_state.timer_status == "results":
+        render_lottie_state("results", height=275, loop=True, key="cat_results")
+        st.success("今日成果與心情紀錄已儲存。好好休息一下吧！")
+        if st.button("開始新的學習", type="primary", use_container_width=True):
+            reset_timer()
+            st.rerun()
+    else:
+        render_lottie_state("idle", height=275, loop=True, key="cat_idle")
+        if st.button("開始今日學習", type="primary", use_container_width=True):
+            start_timer(); st.rerun()
+    if st.session_state.show_daily_log_form:
+        render_daily_log_form(local_today())
+    st.write("")
+    render_scenarios()
+
+
+# =========================================================
+# 6. 日曆與月報
+# =========================================================
+def monthly_logs(year: int, month: int) -> list[dict]:
+    prefix = f"{year:04d}-{month:02d}-"
+    return [log for key, log in st.session_state.daily_logs.items() if key.startswith(prefix)]
+
+
+def render_month_grid(year: int, month: int) -> None:
+    active = {
+        date.fromisoformat(log["study_date"]).day for log in monthly_logs(year, month)
+        if int(log.get("study_seconds", 0)) > 0
+    }
+    cells = []
+    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
+        for day in week:
+            muted = day.month != month
+            dot = '<span class="dot"></span>' if day.day in active and not muted else ""
+            cells.append(f'<div class="day {"muted" if muted else ""}"><span>{day.day}</span>{dot}</div>')
+    st.markdown(
+        f"""
+        <style>
+        .cal{{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}}
+        .dow{{text-align:center;color:#92959C;font-size:.75rem;padding:8px 0}}
+        .day{{min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;color:#171717}}
+        .day.muted{{color:#C8C9CD}} .dot{{width:6px;height:6px;background:#F7A916;border-radius:50%;margin-top:5px}}
+        </style>
+        <div class="lg-card"><div class="cal">{''.join(f'<div class="dow">{d}</div>' for d in ['一','二','三','四','五','六','日'])}{''.join(cells)}</div></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_monthly_report(year: int, month: int) -> None:
+    logs = monthly_logs(year, month)
+    total = {
+        "study_seconds":sum(int(log.get("study_seconds", 0)) for log in logs),
+        "remembered_cards":sum(int(log.get("remembered_cards", 0)) for log in logs),
+        "quiz_count":sum(int(log.get("quiz_count", 0)) for log in logs),
+    }
+    st.markdown(f"## 你的 {month} 月")
+    st.caption("MONTHLY LEARNING REVIEW")
+    render_stats(total, "本月學習數據")
+    weekly = [0, 0, 0, 0, 0]
+    for log in logs:
+        day = date.fromisoformat(log["study_date"]).day
+        weekly[min((day - 1)//7, 4)] += int(log.get("study_seconds", 0))//60
+    highest = max(weekly + [1])
+    bars = "".join(
+        f'<div style="flex:1;text-align:center"><div style="height:120px;display:flex;align-items:flex-end;justify-content:center"><div style="width:34px;height:{max(5,value/highest*100):.0f}%;background:#F7A916;border-radius:9px 9px 3px 3px"></div></div><small>第{i+1}週</small></div>'
+        for i, value in enumerate(weekly)
+    )
+    st.markdown(f'<div class="lg-card"><div class="lg-eyebrow">每週學習時間</div><div style="display:flex;gap:12px;margin-top:20px">{bars}</div></div>', unsafe_allow_html=True)
+    mood_counts = {mood:0 for mood in MOODS}
+    for log in logs:
+        mood_counts[log.get("mood", "普通")] = mood_counts.get(log.get("mood", "普通"), 0) + 1
+    main_mood = max(mood_counts, key=mood_counts.get) if logs else "尚未記錄"
+    st.markdown(
+        f'<div class="lg-card"><div class="lg-eyebrow">學習洞察</div><h3>本月常見心情：{main_mood}</h3><p>保持每日短時間練習，並優先加強完成率較低的題型。</p></div>',
+        unsafe_allow_html=True,
+    )
+    render_lottie_state("results", height=220, loop=True, key="cat_monthly_results")
+
+
+def render_calendar_page() -> None:
+    brand_header()
+    selected = st.session_state.selected_log_date
+    title_col, report_col = st.columns([3, 1])
+    title_col.markdown(f"## {selected.strftime('%B %Y')}")
+    if report_col.button("月報", use_container_width=True):
+        st.session_state.show_monthly_report = not st.session_state.show_monthly_report
+    if st.session_state.show_monthly_report:
+        render_monthly_report(selected.year, selected.month)
         return
+    render_month_grid(selected.year, selected.month)
+    selected = st.date_input("選擇日期", value=selected, max_value=local_today())
+    st.session_state.selected_log_date = selected
+    log = get_log(selected)
+    render_stats(log)
+    mood = log.get("mood", "普通")
+    mood_icon = MOOD_ICONS[MOODS.index(mood)] if mood in MOODS else "😐"
+    journal = html.escape(log.get("journal", "")) or "這一天還沒有留下心情日記。"
+    st.markdown(
+        f'<div class="lg-card"><div class="lg-eyebrow">{selected.strftime("%m月%d日")} 學習紀錄</div><div class="lg-log-row"><div class="lg-log-title">今日學習心情</div><div class="lg-pill">{mood_icon} {mood}</div></div><div class="lg-log-row"><div><div class="lg-log-title">心情日記</div><div class="lg-log-meta">{journal}</div></div></div></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("編輯這天的紀錄", use_container_width=True):
+        st.session_state.show_daily_log_form = True
+    if st.session_state.show_daily_log_form:
+        render_daily_log_form(selected)
 
-    st.markdown("### 點選句子中的單字")
-    st.caption("點開單字即可查看語境翻譯、詞性和原形")
 
-    language_code = str(data.get("lang_code") or "fr")
-    columns_per_row = 4
+# =========================================================
+# 7. 複習卡
+# =========================================================
+def render_flashcards() -> None:
+    brand_header(); st.markdown("## 複習卡")
+    cards = st.session_state.review_zone
+    if not cards:
+        st.success("目前沒有待複習內容。")
+        st.markdown('<div class="lg-cat-stage"><div class="lg-cat">🧶🐈</div></div>', unsafe_allow_html=True)
+        return
+    index = min(st.session_state.current_card_index, len(cards) - 1)
+    card = cards[index]
+    word = html.escape(str(card.get("word", "")))
+    phonetic = html.escape(str(card.get("phonetic", "")))
+    meaning = html.escape(str(card.get("meaning", "")))
+    example = html.escape(str(card.get("example_sentence", "")))
+    st.caption(f"{index + 1} / {len(cards)} · 左右滑動卡片")
+    st.markdown(
+        f'<div class="lg-card" style="min-height:330px;display:flex;flex-direction:column;justify-content:center;text-align:center"><h1>{word}</h1><p>/{phonetic}/</p><div style="width:52px;border-top:1px solid #E8E8EA;margin:26px auto"></div><h3>{meaning}</h3><p>{example}</p><div style="font-size:3.3rem;margin-top:16px">🐈</div></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("播放發音", use_container_width=True):
+        try:
+            audio = nlp_engine.generate_audio(card.get("word", ""), lang=card.get("lang_code", "fr"))
+            if audio:
+                st.audio(audio, format="audio/mp3")
+        except Exception:
+            st.warning("語音暫時無法播放。")
+    left, right = st.columns(2)
+    if left.button("← 還要複習", use_container_width=True):
+        st.session_state.current_card_index = (index + 1) % len(cards)
+        st.rerun()
+    if right.button("記住了 →", type="primary", use_container_width=True):
+        mastered = st.session_state.review_zone.pop(index)
+        if mastered.get("word") not in [r.get("word") for r in st.session_state.brain_zone]:
+            st.session_state.brain_zone.append(mastered)
+        update_word_status_in_supabase(mastered.get("word", ""), "mastered")
+        log = get_log(local_today()).copy()
+        log["remembered_cards"] = int(log.get("remembered_cards", 0)) + 1
+        save_daily_log(log)
+        st.session_state.current_card_index = 0
+        st.toast("記住 1 張，已加入今日數據")
+        st.rerun()
 
-    for row_start in range(0, len(breakdown), columns_per_row):
-        row_items = breakdown[row_start:row_start + columns_per_row]
-        columns = st.columns(len(row_items))
 
-        for offset, item in enumerate(row_items):
-            if not isinstance(item, dict):
-                continue
+# =========================================================
+# 8. A2 刷題
+# =========================================================
+def render_a2_quiz() -> None:
+    brand_header(); st.markdown("## A2 刷題")
+    skills = {"全部":None, "閱讀 Reading":"reading", "聽力 Listening":"listening", "寫作 Writing":"writing", "口說 Speaking":"speaking"}
+    selected = st.selectbox("選擇練習技能", list(skills.keys()), key="skill_selector")
+    if st.button("開始刷題 / 換一批題目", type="primary", use_container_width=True):
+        loading = render_loading_animation("貓咪正在載入 A2 題目…", "loading_a2_questions")
+        try:
+            query = supabase.table("quiz_questions").select("*").eq("is_active", True)
+            if skills[selected]:
+                query = query.eq("skill", skills[selected])
+            questions = query.execute().data or []
+            random.shuffle(questions)
+            st.session_state.quiz_questions = questions[:10]
+            st.session_state.quiz_index = st.session_state.quiz_score = 0
+            st.session_state.quiz_answered = False
+            st.rerun()
+        except Exception as exc:
+            st.error(f"載入題目失敗：{exc}")
+        finally:
+            loading.empty()
+    questions = st.session_state.quiz_questions
+    if not questions:
+        st.markdown('<div class="lg-cat-stage"><div class="lg-cat">🐈</div></div>', unsafe_allow_html=True)
+        st.caption("選擇技能後開始今天的 A2 練習。")
+        return
+    index = st.session_state.quiz_index
+    if index >= len(questions):
+        st.success(f"本輪完成：答對 {st.session_state.quiz_score} / {len(questions)} 題")
+        if st.button("再練一次", type="primary"):
+            st.session_state.quiz_index = st.session_state.quiz_score = 0
+            st.session_state.quiz_answered = False
+            st.rerun()
+        return
+    question = questions[index]
+    st.caption(f"題目 {index + 1} / {len(questions)} · {question.get('skill', '')}")
+    st.markdown(f'<div class="lg-card"><h3>{question.get("question_text", "")}</h3></div>', unsafe_allow_html=True)
+    if question.get("skill") == "listening":
+        parts = re.findall(r"[«「]?([A-Za-zÀ-ÿœæç'’. ?!,;:]+)[»」]?", question.get("question_text", ""))
+        playable = next((p.strip() for p in parts if len(p.strip()) > 15), None)
+        if playable and st.button("播放聽力內容"):
+            try:
+                audio = nlp_engine.generate_audio(playable, lang="fr")
+                if audio:
+                    st.audio(audio, format="audio/mp3")
+            except Exception:
+                st.warning("語音暫時無法使用。")
+    if question.get("question_type") == "mcq":
+        options = question.get("options") or []
+        if isinstance(options, str):
+            try:
+                options = json.loads(options)
+            except json.JSONDecodeError:
+                options = []
+        answer = st.radio("請選擇答案", options, key=f"answer_{index}")
+    else:
+        answer = st.text_area("輸入你的回答", key=f"answer_{index}", height=120)
+    if not st.session_state.quiz_answered:
+        if st.button("提交答案", type="primary", use_container_width=True):
+            st.session_state.quiz_answered = True
+            if question.get("question_type") == "mcq" and answer == question.get("correct_answer", ""):
+                st.session_state.quiz_score += 1
+            log = get_log(local_today()).copy()
+            log["quiz_count"] = int(log.get("quiz_count", 0)) + 1
+            save_daily_log(log)
+            st.rerun()
+    else:
+        correct = question.get("correct_answer", "")
+        if question.get("question_type") == "mcq":
+            st.success("答對了！") if answer == correct else st.error(f"正確答案：{correct}")
+        else:
+            st.info(f"參考答案：{correct}")
+        st.markdown("### 解析")
+        st.write(question.get("explanation", "暫無解析"))
+        if st.button("下一題 →", use_container_width=True):
+            st.session_state.quiz_index += 1
+            st.session_state.quiz_answered = False
+            st.rerun()
 
-            index = row_start + offset
-            item_word = str(item.get("word") or "").strip()
 
-            if not item_word:
-                continue
+# =========================================================
+# 9. 固定按鈕導覽與路由
+# =========================================================
+NAV_KEYS = {"首頁":"home", "日曆":"calendar", "複習卡":"review", "A2刷題":"quiz"}
 
-            meaning = str(item.get("meaning") or "")
-            phonetic = str(item.get("phonetic") or "")
-            lemma = str(item.get("lemma") or "")
-            part_of_speech = str(item.get("part_of_speech") or "")
 
-            with columns[offset]:
-                with st.popover(item_word, use_container_width=True):
-                    st.markdown(f"### {html.escape(item_word)}")
+def navigate_to(page: str) -> None:
+    st.session_state.active_page = page
 
-                    if phonetic:
-                        st.caption(f"/{phonetic}/")
 
-                    if meaning:
-                        st.markdown(f"**{html.escape(meaning)}**")
+active_page = st.session_state.active_page
+active_nav_key = NAV_KEYS.get(active_page, "home")
+st.markdown(
+    f"""
+    <style>
+    .st-key-bottom_nav .st-key-nav_{active_nav_key} button::before {{ opacity:1!important; }}
+    .st-key-bottom_nav .st-key-nav_{active_nav_key} button p {{ opacity:1!important; font-weight:750!important; }}
+    .st-key-bottom_nav .st-key-nav_{active_nav_key} button::after {{
+        content:""; position:absolute; bottom:1px; width:18px; height:3px;
+        border-radius:999px; background:var(--lg-orange);
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-                    details = []
+with st.container(key="bottom_nav"):
+    nav_columns = st.columns(len(NAV_ITEMS), gap="small")
+    for nav_column, page in zip(nav_columns, NAV_ITEMS):
+        nav_column.button(
+            page,
+            key=f"nav_{NAV_KEYS[page]}",
+            on_click=navigate_to,
+            args=(page,),
+            use_container_width=True,
+        )
 
-                    if part_of_speech:
-                        details.append(
-                            f"詞性：{html.escape(part_of_speech)}"
-                        )
+active_page = st.session_state.active_page
 
-                    if lemma and lemma.casefold() != item_word.casefold():
-                        details.append(
-                            f"原形：{html.escape(lemma)}"
-                        )
-
-                    if details:
-                        st.caption(" · ".join(details))
-
-                    play_search_audio(
-                        item_word,
-                        language_code,
-                        key=f"search_word_audio_{index}",
-                    )
-
-if __name__ == "__main__":
+if active_page == "首頁":
     render_home()
+elif active_page == "日曆":
+    render_calendar_page()
+elif active_page == "複習卡":
+    render_flashcards()
+else:
+    render_a2_quiz()
 
+
+with st.sidebar:
+    st.markdown("## Language Genius")
+    st.caption("學習資料總覽")
+    st.metric("待複習", len(st.session_state.review_zone))
+    st.metric("已記住", len(st.session_state.brain_zone))
+    if st.session_state.user_profile:
+        st.markdown("### 個人設定")
+        st.write(st.session_state.user_profile.get("display_name", ""))
+        st.caption(st.session_state.user_profile.get("current_level", ""))
+        st.caption(st.session_state.user_profile.get("learning_goal", ""))
