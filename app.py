@@ -1,15 +1,3 @@
-今天 上午1:03
-已貼上文字 (1)(8).txt
-文件
-請修正語法是否正確
-
-我目前無法讀取這個附件的文字內容。請直接把要檢查的句子貼到聊天室，我會幫你逐句整理成：
-
-原句
-修正版
-錯誤原因
-更自然的表達方式
-中文翻譯與發音提示（如果需要）
 import calendar
 import html
 import json
@@ -658,36 +646,8 @@ def render_home() -> None:
     render_search_module()
 
 
-def render_search_module():
-    """新版完整搜尋模組 (示意或對應你的實作)"""
-    st.markdown("### 單字與句子查詢")
-    query = st.text_input(
-        "單字查詢",
-        placeholder="輸入英文或法文單字/句子",
-        label_visibility="collapsed"
-    )
-    if st.button("查詢", type="primary", use_container_width=True):
-        if query:
-            # 這裡執行查詢與分析邏輯，並會呼叫 render_word_breakdown()
-            pass
-
-
-這段 Python 語法基本正確，在 Python 3.10 以上可以啟動；但目前「查詢」功能不會執行，因為最後仍是 pass。
-
-主要問題：
-
-render_search_module() 沒有呼叫 AI 分析。
-render_home() 的 today_log 沒有使用。
-date | str、dict | None 需要 Python 3.10+。
-st.popover() 需要較新的 Streamlit。
-play_search_audio() 的 key 參數沒有實際使用。
-html、random、re、calendar、components 等 import 在這段裡尚未使用。
-word_breakdown 如果 AI 回傳的不是 list，可能導致錯誤。
-
-建議把搜尋部分修改成：
-
 def render_search_module() -> None:
-    """查詢單字或句子，並顯示分析結果。"""
+    """搜尋並顯示單字或完整句子的分析結果。"""
     st.markdown("### 單字與句子查詢")
 
     query = st.text_input(
@@ -697,83 +657,96 @@ def render_search_module() -> None:
         key="search_query",
     )
 
-    if not st.button(
+    if st.button(
         "查詢",
         type="primary",
         use_container_width=True,
         key="search_button",
     ):
+        cleaned_query = query.strip()
+
+        if not cleaned_query:
+            st.warning("請輸入要查詢的單字或句子。")
+        else:
+            loading = render_loading_animation(
+                "正在分析內容…",
+                key="search_loading",
+            )
+
+            try:
+                result = ai_service.get_word_analysis(cleaned_query)
+
+                # AIService 如果回傳 JSON 字串，先轉成 dict
+                if isinstance(result, str):
+                    result = json.loads(result)
+
+                if not isinstance(result, dict):
+                    raise TypeError(
+                        f"AI 回傳格式錯誤：預期 dict，實際為 {type(result).__name__}"
+                    )
+
+                st.session_state.search_result = result
+                st.session_state.search_error = None
+
+            except json.JSONDecodeError as exc:
+                st.session_state.search_result = None
+                st.session_state.search_error = (
+                    f"AI 回傳的內容不是有效 JSON：{exc}"
+                )
+
+            except Exception as exc:
+                st.session_state.search_result = None
+                st.session_state.search_error = f"查詢失敗：{exc}"
+
+            finally:
+                loading.empty()
+
+    error = st.session_state.get("search_error")
+    if error:
+        st.error(error)
         return
-
-    query = query.strip()
-
-    if not query:
-        st.warning("請先輸入要查詢的單字或句子。")
-        return
-
-    loading = render_loading_animation(
-        "正在分析內容…",
-        key="search_loading",
-    )
-
-    try:
-        # 請依照 AIService 裡真正的方法名稱調整
-        result = ai_service.get_word_analysis(query)
-
-        if isinstance(result, str):
-            result = json.loads(result)
-
-        if not isinstance(result, dict):
-            raise TypeError("AI 分析結果必須是 dict 或 JSON object")
-
-        st.session_state["search_result"] = result
-
-    except json.JSONDecodeError:
-        st.error("AI 回傳的內容不是有效的 JSON 格式。")
-
-    except Exception as exc:
-        st.error(f"查詢失敗：{exc}")
-
-    finally:
-        loading.empty()
 
     result = st.session_state.get("search_result")
-
     if not result:
         return
 
-    sentence = (
-        result.get("sentence")
-        or result.get("original_text")
+    original_text = (
+        result.get("original_text")
+        or result.get("sentence")
         or result.get("word")
         or query
     )
-    translation = (
-        result.get("translation")
-        or result.get("chinese_translation")
-        or result.get("meaning")
-        or ""
-    )
-    phonetic = result.get("phonetic", "")
-    language_code = result.get("lang_code", "fr")
 
-    st.markdown(f"## {html.escape(str(sentence))}")
+    translation = (
+        result.get("chinese_translation")
+        or result.get("translation")
+        or result.get("meaning")
+        or "目前沒有翻譯"
+    )
+
+    phonetic = result.get("phonetic") or ""
+    language_code = result.get("lang_code") or "fr"
+
+    st.markdown('<div class="lg-card">', unsafe_allow_html=True)
+    st.markdown(f"## {html.escape(str(original_text))}")
 
     if phonetic:
         st.caption(f"/{phonetic}/")
 
-    if translation:
-        st.markdown(f"**整句翻譯：** {html.escape(str(translation))}")
+    st.markdown(
+        f"**完整翻譯：** {html.escape(str(translation))}"
+    )
 
     play_search_audio(
-        str(sentence),
+        str(original_text),
         language_code,
         key="search_sentence_audio",
     )
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
     render_word_breakdown(result)
 
-再強化 render_word_breakdown() 的資料檢查：
 
 def render_word_breakdown(data: dict) -> None:
     """顯示句中每個單字的語境翻譯、詞性、原形及發音。"""
