@@ -175,8 +175,20 @@ st.markdown(
     .st-key-bottom_nav p { color:#171717; font-size:.72rem; line-height:1; font-weight:650; opacity:.76; }
     .st-key-bottom_nav label:has(input:checked) p { opacity:1; font-weight:750; }
     /* V6: real navigation buttons. No radio input or selection circles. */
-    .st-key-bottom_nav [data-testid="stHorizontalBlock"] { gap:0!important; }
-    .st-key-bottom_nav [data-testid="column"] { min-width:0!important; }
+    .st-key-bottom_nav [data-testid="stHorizontalBlock"] {
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        gap:0!important;
+        width:100%!important;
+    }
+    .st-key-bottom_nav [data-testid="column"] {
+        flex:1 1 25%!important;
+        width:25%!important;
+        min-width:0!important;
+        max-width:25%!important;
+    }
     .st-key-bottom_nav .stButton { width:100%; }
     .st-key-bottom_nav .stButton>button {
         width:100%; min-width:0; min-height:62px; height:62px;
@@ -219,7 +231,36 @@ st.markdown(
         [data-testid="stMainBlockContainer"] { padding:1.25rem 1rem 8rem; }
         .lg-card { padding:20px; } .lg-stat { padding:6px; }
         .lg-stat-value { font-size:1.35rem; } .lg-cat-stage { min-height:155px; }
-        .st-key-bottom_nav { bottom:10px; }
+        .st-key-bottom_nav {
+            bottom:max(10px, env(safe-area-inset-bottom));
+            width:calc(100vw - 20px);
+            padding:4px 6px;
+            border-radius:20px;
+        }
+        .st-key-bottom_nav [data-testid="stHorizontalBlock"] {
+            display:flex!important;
+            flex-direction:row!important;
+            flex-wrap:nowrap!important;
+        }
+        .st-key-bottom_nav [data-testid="column"] {
+            flex:1 1 25%!important;
+            width:25%!important;
+            min-width:0!important;
+            max-width:25%!important;
+        }
+        .st-key-bottom_nav .stButton>button {
+            min-height:60px;
+            height:60px;
+            padding:5px 0 8px;
+        }
+        .st-key-bottom_nav .stButton>button::before {
+            width:23px;
+            height:23px;
+            flex-basis:23px;
+        }
+        .st-key-bottom_nav .stButton>button p {
+            font-size:.68rem;
+        }
     }
     </style>
     """,
