@@ -37,12 +37,15 @@ MOOD_ICONS = ["☹", "🙁", "😐", "🙂", "😄"]
 APP_DIR = Path(__file__).resolve().parent
 LOTTIE_DIR = APP_DIR / "assets" / "lottie"
 LOTTIE_FILES = {
+    "home_empty": "cat_sit_to_lie.json",
+    "home_active": "cat_belly_roll.json",
     "idle": "language_genius_cat_under_book_idle.json",
     "learning": "language_genius_cat_plane_learning.json",
     "paused": "language_genius_cat_box_paused.json",
     "completed": "language_genius_cat_celebration_complete.json",
     "results": "language_genius_cat_cup_results.json",
-    "loading": "language_genius_cat_stretch_loading.json",
+    "loading": "cat_stretch.json",
+    "quiz": "cat_box_peek.json",
 }
 
 
@@ -631,14 +634,14 @@ def render_stats(log: dict, eyebrow: str = "今日學習數據") -> None:
     )
 
 
-def render_timer_scene() -> None:
+def render_timer_scene(animation_name: str | None = None) -> None:
     base_seconds, goal_seconds = timer_elapsed(), DAILY_GOAL_MINUTES * 60
     running = st.session_state.timer_status == "running"
     render_lottie_state(
-        "learning" if running else "paused",
+        animation_name or ("learning" if running else "paused"),
         height=270,
         loop=True,
-        key="cat_learning" if running else "cat_paused",
+        key=f"cat_{animation_name or ('learning' if running else 'paused')}_{'running' if running else 'paused'}",
     )
     components.html(
         f"""
@@ -975,15 +978,28 @@ def render_search_module() -> None:
     render_word_breakdown(result)
 
 
+def home_animation_for_log(log: dict) -> str:
+    """依今日實際紀錄選擇首頁動畫，不受昨日計時狀態影響。"""
+    for field in ("study_seconds", "remembered_cards", "quiz_count"):
+        try:
+            if float(log.get(field, 0) or 0) > 0:
+                return "home_active"
+        except (TypeError, ValueError):
+            continue
+    return "home_empty"
+
+
 def render_home() -> None:
     brand_header()
     st.markdown(f'<div class="lg-hero-title">{greeting()}</div>', unsafe_allow_html=True)
     st.caption(datetime.now(TAIPEI_TZ).strftime("%A, %B %d"))
     render_search_module()
-    render_stats(get_log(local_today()))
+    today_log = get_log(local_today())
+    render_stats(today_log)
+    home_animation = home_animation_for_log(today_log)
 
     if st.session_state.timer_status in {"running", "paused"}:
-        render_timer_scene()
+        render_timer_scene(home_animation)
         left, right = st.columns(2)
         if st.session_state.timer_status == "running":
             if left.button("暫停", use_container_width=True):
@@ -993,18 +1009,18 @@ def render_home() -> None:
         if right.button("結束學習", use_container_width=True):
             finish_timer(); st.rerun()
     elif st.session_state.timer_status == "completed":
-        render_lottie_state("completed", height=290, loop=False, key="cat_completed")
+        render_lottie_state(home_animation, height=290, loop=True, key=f"cat_{home_animation}_completed")
         st.success("今日學習完成！你又向目標靠近了一點。")
         if st.button("查看並完成今日紀錄", type="primary", use_container_width=True):
             st.session_state.show_daily_log_form = True
     elif st.session_state.timer_status == "results":
-        render_lottie_state("results", height=275, loop=True, key="cat_results")
+        render_lottie_state(home_animation, height=275, loop=True, key=f"cat_{home_animation}_results")
         st.success("今日成果與心情紀錄已儲存。好好休息一下吧！")
         if st.button("開始新的學習", type="primary", use_container_width=True):
             reset_timer()
             st.rerun()
     else:
-        render_lottie_state("idle", height=275, loop=True, key="cat_idle")
+        render_lottie_state(home_animation, height=275, loop=True, key=f"cat_{home_animation}_idle")
         if st.button("開始今日學習", type="primary", use_container_width=True):
             start_timer(); st.rerun()
     if st.session_state.show_daily_log_form:
@@ -1173,9 +1189,9 @@ def render_a2_quiz() -> None:
             st.error(f"載入題目失敗：{exc}")
         finally:
             loading.empty()
+    render_lottie_state("quiz", height=275, loop=True, key="cat_quiz_box_peek")
     questions = st.session_state.quiz_questions
     if not questions:
-        st.markdown('<div class="lg-cat-stage"><div class="lg-cat">🐈</div></div>', unsafe_allow_html=True)
         st.caption("選擇技能後開始今天的 A2 練習。")
         return
     index = st.session_state.quiz_index
