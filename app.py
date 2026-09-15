@@ -138,55 +138,6 @@ st.markdown(
         border:1px solid rgba(23,23,23,.06); border-radius:22px; padding:5px 12px;
         box-shadow:0 16px 44px rgba(24,24,27,.16); backdrop-filter:blur(16px);
     }
-    .st-key-bottom_nav [data-testid="stRadio"]>label { display:none; }
-    .st-key-bottom_nav [data-testid="stRadio"] { width:100%; }
-    .st-key-bottom_nav div[role="radiogroup"] {
-        display:flex!important;
-        flex-direction:row!important;
-        flex-wrap:nowrap!important;
-        justify-content:space-around!important;
-        align-items:stretch!important;
-        width:100%!important;
-        gap:0!important;
-    }
-    .st-key-bottom_nav label {
-        flex:1 1 25%!important; width:25%!important; min-width:0!important;
-        justify-content:center; align-items:center; flex-direction:column;
-        gap:3px; position:relative; border-radius:0; padding:7px 10px 9px;
-        background:transparent!important;
-    }
-    .st-key-bottom_nav label:has(input:checked) { background:transparent!important; }
-    .st-key-bottom_nav label>div:first-child { display:none; }
-    .st-key-bottom_nav label::before {
-        content:""; display:block; width:25px; height:25px; flex:0 0 25px;
-        background:#171717; opacity:.72;
-        -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-        -webkit-mask-position:center; mask-position:center;
-        -webkit-mask-size:contain; mask-size:contain;
-    }
-    .st-key-bottom_nav label:nth-of-type(1)::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTMgMTAuNSAxMiAzbDkgNy41VjIxSDNaIiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjEuOSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjguMiIgY3k9IjEzLjEiIHI9IjEuMjUiLz48Y2lyY2xlIGN4PSIxNS44IiBjeT0iMTMuMSIgcj0iMS4yNSIvPjxjaXJjbGUgY3g9IjEwLjUiIGN5PSIxMC44IiByPSIxLjEiLz48Y2lyY2xlIGN4PSIxMy41IiBjeT0iMTAuOCIgcj0iMS4xIi8+PHBhdGggZD0iTTguNyAxNy4yYzAtMiAxLjQ1LTMuMSAzLjMtMy4xczMuMyAxLjEgMy4zIDMuMWMwIDEuMjUtMSAyLTIuMSAxLjQ1YTIuNiAyLjYgMCAwIDAtMi40IDBjLTEuMS41NS0yLjEtLjItMi4xLTEuNDVaIi8+PC9zdmc+");
-    }
-    .st-key-bottom_nav label:nth-of-type(2)::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==");
-    }
-    .st-key-bottom_nav label:nth-of-type(3)::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg==");
-    }
-    .st-key-bottom_nav label:nth-of-type(4)::before {
-        -webkit-mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
-        mask-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+");
-    }
-    .st-key-bottom_nav label:has(input:checked)::before { opacity:1; }
-    .st-key-bottom_nav label:has(input:checked)::after {
-        content:""; position:absolute; bottom:2px; width:18px; height:3px;
-        border-radius:999px; background:var(--lg-orange);
-    }
-    .st-key-bottom_nav p { color:#171717; font-size:.72rem; line-height:1; font-weight:650; opacity:.76; }
-    .st-key-bottom_nav label:has(input:checked) p { opacity:1; font-weight:750; }
     /* V6: real navigation buttons. No radio input or selection circles. */
     .st-key-bottom_nav [data-testid="stHorizontalBlock"] {
         display:flex!important;
@@ -196,7 +147,8 @@ st.markdown(
         gap:0!important;
         width:100%!important;
     }
-    .st-key-bottom_nav [data-testid="column"] {
+    .st-key-bottom_nav [data-testid="column"],
+    .st-key-bottom_nav [data-testid="stColumn"] {
         flex:1 1 25%!important;
         width:25%!important;
         min-width:0!important;
@@ -234,6 +186,15 @@ st.markdown(
     .st-key-nav_calendar { --nav-icon:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iNSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE2IiByeD0iMi40IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMyA5aDE4TTcgM3Y0TTE3IDN2NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTMiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEzIiByPSIxIi8+PHBhdGggZD0iTTguNSAxNmMxIDEuMTUgMi4xIDEuNyAzLjUgMS43czIuNS0uNTUgMy41LTEuNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg=="); }
     .st-key-nav_review { --nav-icon:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iNCIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE4IiByeD0iMi41IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNCAxNy41aDE0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTUuNSA0LjVsLjY1IDEuOCAxLjg1LjY1LTEuODUuNjUtLjY1IDEuODUtLjY1LTEuODVMMTMgNi45NWwxLjg1LS42NVoiLz48cGF0aCBkPSJtMjAgOSAuNCAxLjEgMS4xLjQtMS4xLjRMMjAgMTJsLS40LTEuMS0xLjEtLjQgMS4xLS40WiIvPjwvc3ZnPg=="); }
     .st-key-nav_quiz { --nav-icon:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0ibTggMTYgLjctMy4yTDE2LjQgNWwyLjYgMi42LTcuOCA3LjdaIi8+PC9zdmc+"); }
+    .st-key-bottom_nav .stButton>button:focus-visible {
+        outline:2px solid var(--lg-orange)!important; outline-offset:-2px;
+    }
+    .st-key-bottom_nav .stButton>button[kind="primary"]::before { opacity:1; }
+    .st-key-bottom_nav .stButton>button[kind="primary"] p { opacity:1; font-weight:750; }
+    .st-key-bottom_nav .stButton>button[kind="primary"]::after {
+        content:""; position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+        width:20px; height:3px; border-radius:999px; background:var(--lg-orange);
+    }
     /* Lottie source images are transparent; keep Streamlit wrappers transparent too. */
     [data-testid="stCustomComponentV1"],
     [data-testid="stCustomComponentV1"]>div,
@@ -1278,24 +1239,23 @@ def navigate_to(page: str) -> None:
     st.session_state.active_page = page
 
 
-def navigate_from_bottom_nav() -> None:
-    """將底部選單的選擇同步到頁面路由。"""
-    st.session_state.active_page = st.session_state.bottom_nav_selection
+def render_bottom_nav() -> None:
+    """四個等寬按鈕，透過 callback 切換頁面。"""
+    with st.container(key="bottom_nav"):
+        columns = st.columns([1, 1, 1, 1], gap="small")
+        for column, page in zip(columns, NAV_ITEMS):
+            with column:
+                st.button(
+                    page,
+                    key=f"nav_{NAV_KEYS[page]}",
+                    type="primary" if st.session_state.active_page == page else "secondary",
+                    use_container_width=True,
+                    on_click=navigate_to,
+                    args=(page,),
+                )
 
 
-active_page = st.session_state.active_page
-if "bottom_nav_selection" not in st.session_state:
-    st.session_state.bottom_nav_selection = active_page
-
-with st.container(key="bottom_nav"):
-    st.radio(
-        "頁面導覽",
-        NAV_ITEMS,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="bottom_nav_selection",
-        on_change=navigate_from_bottom_nav,
-    )
+render_bottom_nav()
 
 active_page = st.session_state.active_page
 
