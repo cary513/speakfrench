@@ -516,23 +516,40 @@ def render_lottie_state(
     loop: bool = True,
     key: str | None = None,
 ) -> None:
-    """統一渲染六種貓咪狀態；套件或檔案缺失時保持介面可操作。"""
+    """在透明 iframe 內播放 Lottie，避免套件內部白色背景。"""
     animation = load_lottie(animation_name)
-    if st_lottie and animation:
-        st_lottie(
-            animation,
-            height=height,
-            loop=loop,
-            quality="high",
-            key=key or f"cat_{animation_name}",
-        )
+    if animation:
+        animation_json = json.dumps(animation, ensure_ascii=True).replace("<", "\\u003c")
+        player_html = f"""
+        <!doctype html><html><head><meta charset="utf-8">
+        <style>
+        html, body, #cat-animation {{
+            margin:0; padding:0; width:100%; height:100%;
+            background:transparent!important; overflow:hidden;
+        }}
+        #cat-animation svg, #cat-animation canvas {{ background:transparent!important; }}
+        </style></head><body>
+        <div id="cat-animation" role="img" aria-label="Cat animation"></div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+        <script>
+        if (window.lottie) {{
+            lottie.loadAnimation({{
+                container:document.getElementById('cat-animation'),
+                renderer:'svg', loop:{json.dumps(loop)}, autoplay:true,
+                animationData:{animation_json},
+                rendererSettings:{{preserveAspectRatio:'xMidYMid meet'}}
+            }});
+        }} else {{
+            document.getElementById('cat-animation').textContent='🐈';
+        }}
+        </script></body></html>
+        """
+        components.html(player_html, height=height, scrolling=False)
         return
     st.markdown(
         '<div class="lg-cat-stage"><div class="lg-cat">🐈</div></div>',
         unsafe_allow_html=True,
     )
-    if not st_lottie:
-        st.caption("請在 requirements.txt 加入 streamlit-lottie，動畫即可顯示。")
 
 
 def render_loading_animation(message: str, key: str):
@@ -1237,7 +1254,10 @@ def render_a2_quiz() -> None:
     else:
         correct = question.get("correct_answer", "")
         if question.get("question_type") == "mcq":
-            st.success("答對了！") if answer == correct else st.error(f"正確答案：{correct}")
+            if answer == correct:
+                st.success("答對了！")
+            else:
+                st.error(f"正確答案：{correct}")
         else:
             st.info(f"參考答案：{correct}")
         st.markdown("### 解析")
