@@ -1,3 +1,4 @@
+import hmac
 import calendar
 import html
 import json
@@ -27,11 +28,40 @@ if "SUPABASE_SERVICE_ROLE_KEY" not in st.secrets:
 # =========================================================
 st.set_page_config(
     page_title="Language Genius",
-    page_icon="📖",
+    page_icon="🐱",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
+
+def require_password():
+    """限制只有知道密碼的人可以進入 App。"""
+
+    if st.session_state.get("authenticated", False):
+        return
+
+    st.title("Language Genius")
+    st.caption("此 App 為私人使用")
+
+    with st.form("login_form"):
+        password = st.text_input("請輸入密碼", type="password")
+        submitted = st.form_submit_button("進入")
+
+    if submitted:
+        expected_password = st.secrets.get("APP_PASSWORD")
+
+        if not expected_password:
+            st.error("尚未設定 APP_PASSWORD")
+        elif hmac.compare_digest(password, expected_password):
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("密碼錯誤")
+
+    st.stop()
+
+
+require_password()
 TAIPEI_TZ = timezone(timedelta(hours=8))
 DAILY_GOAL_MINUTES = 12
 NAV_ITEMS = ["首頁", "日曆", "複習卡", "A2刷題"]
