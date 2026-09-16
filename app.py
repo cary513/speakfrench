@@ -22,6 +22,11 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_SERVICE_ROLE_KEY"],
 )
+
+if "SUPABASE_SERVICE_ROLE_KEY" not in st.secrets:
+    st.error("找不到 SUPABASE_SERVICE_ROLE_KEY")
+    st.write("目前讀到的 Secret 名稱：", list(st.secrets.keys()))
+    st.stop()
 # =========================================================
 # 1. App 與既有服務設定
 # =========================================================
