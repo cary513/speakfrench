@@ -18,11 +18,6 @@ try:
 except ImportError:
     st_lottie = None
 
-supabase = create_client(
-    st.secrets["SUPABASE_URL"],
-    st.secrets["SUPABASE_SERVICE_ROLE_KEY"],
-)
-
 if "SUPABASE_SERVICE_ROLE_KEY" not in st.secrets:
     st.error("找不到 SUPABASE_SERVICE_ROLE_KEY")
     st.write("目前讀到的 Secret 名稱：", list(st.secrets.keys()))
@@ -59,19 +54,21 @@ LOTTIE_FILES = {
 
 @st.cache_resource
 def init_supabase() -> Client:
-    """沿用原本的 Supabase Secrets 設定。"""
-    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+    """建立 Supabase 後端連線。"""
+    return create_client(
+        st.secrets["SUPABASE_URL"],
+        st.secrets["SUPABASE_SERVICE_ROLE_KEY"],
+    )
 
 
 @st.cache_resource
 def get_services():
-    """沿用原本的 AI 與 NLP 引擎。"""
+    """初始化 AI 與 NLP 引擎。"""
     return AIService(), NLPEngine()
 
 
 supabase = init_supabase()
 ai_service, nlp_engine = get_services()
-
 
 # =========================================================
 # 2. 視覺系統
