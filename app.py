@@ -67,6 +67,46 @@ DAILY_GOAL_MINUTES = 12
 NAV_ITEMS = ["首頁", "日曆", "複習卡", "A2刷題"]
 MOODS = ["很疲累", "有點累", "普通", "不錯", "很棒"]
 MOOD_ICONS = ["☹", "🙁", "😐", "🙂", "😄"]
+
+# 內建 A2 題庫：與 Supabase quiz_questions 合併後去重。
+# 即使雲端題庫暫時不足，每個技能仍有足夠內容可練習。
+A2_QUESTION_BANK = [
+    {"skill":"reading", "question_type":"mcq", "question_text":"Paul va à la boulangerie avant le travail. Où va Paul ?", "options":["À la boulangerie", "À la gare", "À l'école", "Au cinéma"], "correct_answer":"À la boulangerie", "explanation":"「va à la boulangerie」表示去麵包店。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Le musée est fermé le mardi. Quel jour ne peut-on pas visiter le musée ?", "options":["Lundi", "Mardi", "Jeudi", "Samedi"], "correct_answer":"Mardi", "explanation":"fermé le mardi 表示星期二休館。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Le train part à 8 h 15 et arrive à 10 h. À quelle heure arrive-t-il ?", "options":["8 h 15", "9 h", "10 h", "10 h 15"], "correct_answer":"10 h", "explanation":"句子直接說明 arrive à 10 h。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Emma cherche un appartement avec deux chambres. Que cherche-t-elle ?", "options":["Une maison avec jardin", "Un appartement avec deux chambres", "Une chambre d'hôtel", "Un studio"], "correct_answer":"Un appartement avec deux chambres", "explanation":"關鍵資訊是 appartement avec deux chambres。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Il pleut, alors Lucas prend son parapluie. Pourquoi prend-il un parapluie ?", "options":["Il fait chaud", "Il neige", "Il pleut", "Il y a du vent"], "correct_answer":"Il pleut", "explanation":"alors 連接原因與結果：因為下雨，所以帶傘。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"La bibliothèque ouvre de 9 h à 18 h. Quand est-elle ouverte ?", "options":["De 8 h à 17 h", "De 9 h à 18 h", "De 10 h à 19 h", "Toute la nuit"], "correct_answer":"De 9 h à 18 h", "explanation":"營業時間就是 de 9 h à 18 h。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Sophie est végétarienne. Quel plat choisit-elle ?", "options":["Un steak", "Du poulet", "Une salade de légumes", "Du poisson"], "correct_answer":"Une salade de légumes", "explanation":"végétarienne 表示不吃肉類或魚類。"},
+    {"skill":"reading", "question_type":"mcq", "question_text":"Merci de répondre avant vendredi. Quelle est la date limite ?", "options":["Avant lundi", "Avant mercredi", "Avant vendredi", "Après dimanche"], "correct_answer":"Avant vendredi", "explanation":"date limite 是期限；此處為星期五以前。"},
+
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Le rendez-vous est à quinze heures devant la mairie. » À quelle heure est le rendez-vous ?", "options":["13 h", "14 h", "15 h", "16 h"], "correct_answer":"15 h", "explanation":"quinze heures 就是下午三點。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Je voudrais deux billets pour Lyon, s'il vous plaît. » Combien de billets ?", "options":["Un", "Deux", "Trois", "Quatre"], "correct_answer":"Deux", "explanation":"deux billets 表示兩張票。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Aujourd'hui, il fait froid mais il ne pleut pas. » Quel temps fait-il ?", "options":["Il fait chaud", "Il fait froid", "Il pleut", "Il neige"], "correct_answer":"Il fait froid", "explanation":"語句明確說 il fait froid。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Prenez la deuxième rue à droite. » Où faut-il tourner ?", "options":["À la première rue à gauche", "À la deuxième rue à droite", "Tout droit", "Devant la gare"], "correct_answer":"À la deuxième rue à droite", "explanation":"deuxième rue à droite 是右邊第二條街。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Le magasin ferme dans dix minutes. » Que va faire le magasin ?", "options":["Ouvrir", "Fermer", "Déménager", "Changer de nom"], "correct_answer":"Fermer", "explanation":"ferme 表示即將關門。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Mon frère travaille à l'hôpital. Il est infirmier. » Quel est son métier ?", "options":["Professeur", "Infirmier", "Serveur", "Chauffeur"], "correct_answer":"Infirmier", "explanation":"Il est infirmier 表示他是護理師。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Nous partirons dimanche matin après le petit-déjeuner. » Quand partiront-ils ?", "options":["Samedi soir", "Dimanche matin", "Dimanche soir", "Lundi matin"], "correct_answer":"Dimanche matin", "explanation":"時間是 dimanche matin。"},
+    {"skill":"listening", "question_type":"mcq", "question_text":"Écoutez : « Votre chambre est au troisième étage, à gauche de l'ascenseur. » Où est la chambre ?", "options":["Au premier étage", "Au deuxième étage", "Au troisième étage", "Au rez-de-chaussée"], "correct_answer":"Au troisième étage", "explanation":"troisième étage 是三樓。"},
+
+    {"skill":"writing", "question_type":"text", "question_text":"Écrivez un message de 30 à 40 mots pour inviter un ami à votre anniversaire. Précisez la date, l'heure et le lieu.", "correct_answer":"Salut ! Je fête mon anniversaire samedi à 18 heures chez moi. Est-ce que tu veux venir ? Nous allons dîner et écouter de la musique. À bientôt !", "explanation":"邀請訊息需包含稱呼、活動、日期、時間、地點與結尾。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Vous êtes en retard. Écrivez un court message à votre professeur pour expliquer la situation.", "correct_answer":"Bonjour Madame, je suis désolé(e), mon bus a du retard. J'arriverai vers 9 h 15. Merci de votre compréhension.", "explanation":"使用道歉、簡單原因及預計抵達時間。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Écrivez 30 à 40 mots pour présenter votre quartier.", "correct_answer":"J'habite dans un quartier calme près du centre-ville. Il y a un parc, une boulangerie et une bibliothèque. J'aime ce quartier parce que tout est proche.", "explanation":"可以描述位置、設施，以及喜歡或不喜歡的原因。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Répondez à un ami qui propose d'aller au cinéma vendredi. Acceptez et demandez l'heure.", "correct_answer":"Avec plaisir ! Je suis libre vendredi et j'aimerais aller au cinéma avec toi. À quelle heure commence le film ? On peut se retrouver devant le cinéma.", "explanation":"先接受邀請，再詢問時間並提出碰面方式。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Écrivez une carte postale de vacances en 30 à 40 mots.", "correct_answer":"Bonjour de Nice ! Il fait beau et la mer est magnifique. Hier, j'ai visité la vieille ville. Demain, je vais faire une promenade. À bientôt !", "explanation":"明信片可包含地點、天氣、已做與將做的活動。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Écrivez un message pour réserver une table pour deux personnes samedi soir.", "correct_answer":"Bonjour, je voudrais réserver une table pour deux personnes samedi à 19 h 30. Est-ce possible ? Merci de confirmer la réservation.", "explanation":"訂位訊息應包含人數、日期、時間與確認請求。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Décrivez votre journée habituelle en 35 à 50 mots.", "correct_answer":"Je me lève à sept heures et je prends mon petit-déjeuner. Je travaille de neuf heures à dix-sept heures. Le soir, je prépare le dîner, puis je lis un peu avant de dormir.", "explanation":"依時間順序描述日常活動，注意動詞現在式。"},
+    {"skill":"writing", "question_type":"text", "question_text":"Écrivez un e-mail court pour demander des informations sur un cours de français.", "correct_answer":"Bonjour, je voudrais des informations sur votre cours de français A2. Quels sont les horaires et le prix ? Quand commence le prochain cours ? Merci beaucoup.", "explanation":"禮貌說明需求，並提出具體問題。"},
+
+    {"skill":"speaking", "question_type":"text", "question_text":"Présentez-vous en 4 ou 5 phrases : nom, ville, travail ou études et loisirs.", "correct_answer":"Bonjour, je m'appelle Alex. J'habite à Taoyuan. Je suis designer. Pendant mon temps libre, j'aime lire, visiter des expositions et apprendre le français.", "explanation":"使用簡短完整句，依序介紹基本資料與興趣。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Vous achetez un billet de train. Que dites-vous au guichet ?", "correct_answer":"Bonjour, je voudrais un billet aller-retour pour Paris, s'il vous plaît. Je voudrais partir demain matin. Combien coûte le billet ?", "explanation":"說明目的地、單程或來回、日期，再詢問價格。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Décrivez votre logement en 4 ou 5 phrases.", "correct_answer":"J'habite dans un petit appartement. Il y a une chambre, un salon et une cuisine. Mon endroit préféré est le salon parce qu'il est lumineux.", "explanation":"介紹住宅類型、房間與最喜歡的空間。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Au restaurant, votre plat n'est pas celui que vous avez commandé. Que dites-vous ?", "correct_answer":"Excusez-moi, j'ai commandé la salade, mais ce plat n'est pas ma commande. Pouvez-vous vérifier, s'il vous plaît ?", "explanation":"先禮貌引起注意，再說明問題並提出請求。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Parlez de vos projets pour le week-end en 4 phrases.", "correct_answer":"Samedi matin, je vais faire les courses. L'après-midi, je vais voir une exposition avec une amie. Dimanche, je vais rester chez moi et étudier le français.", "explanation":"談計畫時可使用 aller + infinitif。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Demandez votre chemin pour aller à la gare.", "correct_answer":"Excusez-moi, je cherche la gare. Est-ce que c'est loin d'ici ? Pouvez-vous m'indiquer le chemin, s'il vous plaît ?", "explanation":"以禮貌用語開始，再詢問距離與方向。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Expliquez à un médecin que vous ne vous sentez pas bien, sans entrer dans les détails.", "correct_answer":"Bonjour docteur. Je ne me sens pas bien depuis hier. Je suis très fatigué(e) et j'aimerais avoir votre avis.", "explanation":"清楚說明開始時間與一般感受，讓醫師接續詢問。"},
+    {"skill":"speaking", "question_type":"text", "question_text":"Comparez deux moyens de transport : le vélo et le bus.", "correct_answer":"Le vélo est pratique et agréable quand il fait beau. Le bus est plus confortable quand il pleut. Pour les longues distances, je préfère le bus.", "explanation":"使用比較詞，例如 plus、moins，以及偏好表達。"},
+]
 APP_DIR = Path(__file__).resolve().parent
 LOTTIE_DIR = APP_DIR / "assets" / "lottie"
 LOTTIE_FILES = {
@@ -288,11 +328,13 @@ def local_today() -> date:
 
 STATE_DEFAULTS = {
     "active_page":"首頁", "review_zone":[], "brain_zone":[], "word_history":[],
-    "current_card_index":0, "user_profile":None, "selected_category":None,
+    "review_deck":[], "review_deck_index":0, "last_review_card":None,
+    "user_profile":None, "selected_category":None,
     "timer_status":"idle", "timer_started_at":None, "timer_accumulated_seconds":0.0,
     "daily_logs":{}, "selected_log_date":local_today(), "show_daily_log_form":False,
     "show_monthly_report":False, "quiz_index":0, "quiz_questions":[],
-    "quiz_score":0, "quiz_answered":False, "persistence_error":None,
+    "quiz_score":0, "quiz_answered":False, "quiz_recent_questions":[],
+    "persistence_error":None,
     "search_result":None, "search_error":None,
 }
 for state_key, default_value in STATE_DEFAULTS.items():
@@ -1137,6 +1179,27 @@ def render_calendar_page() -> None:
 # =========================================================
 # 7. 複習卡
 # =========================================================
+def review_card_key(card: dict) -> str:
+    """使用資料庫 id；沒有 id 時，以單字／句子作為穩定識別值。"""
+    return str(card.get("id") or card.get("word") or "").strip()
+
+
+def refresh_review_deck(cards: list[dict], force_shuffle: bool = False) -> None:
+    """建立一輪不重複的隨機牌組，並避免新一輪立刻重複上一張。"""
+    available_keys = [review_card_key(card) for card in cards if review_card_key(card)]
+    deck = [key for key in st.session_state.review_deck if key in available_keys]
+
+    if force_shuffle or set(deck) != set(available_keys):
+        deck = available_keys.copy()
+        random.shuffle(deck)
+        last_key = st.session_state.last_review_card
+        if len(deck) > 1 and deck[0] == last_key:
+            swap_index = next(i for i, key in enumerate(deck[1:], 1) if key != last_key)
+            deck[0], deck[swap_index] = deck[swap_index], deck[0]
+        st.session_state.review_deck = deck
+        st.session_state.review_deck_index = 0
+
+
 def render_flashcards() -> None:
     brand_header(); st.markdown("## 複習卡")
     cards = st.session_state.review_zone
@@ -1144,13 +1207,16 @@ def render_flashcards() -> None:
         st.success("目前沒有待複習內容。")
         st.markdown('<div class="lg-cat-stage"><div class="lg-cat">🧶🐈</div></div>', unsafe_allow_html=True)
         return
-    index = min(st.session_state.current_card_index, len(cards) - 1)
-    card = cards[index]
+    refresh_review_deck(cards)
+    deck_index = min(st.session_state.review_deck_index, len(st.session_state.review_deck) - 1)
+    card_key = st.session_state.review_deck[deck_index]
+    card = next((item for item in cards if review_card_key(item) == card_key), cards[0])
+    card_index = cards.index(card)
     word = html.escape(str(card.get("word", "")))
     phonetic = html.escape(str(card.get("phonetic", "")))
     meaning = html.escape(str(card.get("meaning", "")))
     example = html.escape(str(card.get("example_sentence", "")))
-    st.caption(f"{index + 1} / {len(cards)} · 左右滑動卡片")
+    st.caption(f"本輪 {deck_index + 1} / {len(cards)} · 每輪隨機且不重複")
     st.markdown(
         f'<div class="lg-card" style="min-height:330px;display:flex;flex-direction:column;justify-content:center;text-align:center"><h1>{word}</h1><p>/{phonetic}/</p><div style="width:52px;border-top:1px solid #E8E8EA;margin:26px auto"></div><h3>{meaning}</h3><p>{example}</p><div style="font-size:3.3rem;margin-top:16px">🐈</div></div>',
         unsafe_allow_html=True,
@@ -1164,17 +1230,27 @@ def render_flashcards() -> None:
             st.warning("語音暫時無法播放。")
     left, right = st.columns(2)
     if left.button("← 還要複習", use_container_width=True):
-        st.session_state.current_card_index = (index + 1) % len(cards)
+        st.session_state.last_review_card = card_key
+        next_index = deck_index + 1
+        if next_index >= len(st.session_state.review_deck):
+            refresh_review_deck(cards, force_shuffle=True)
+        else:
+            st.session_state.review_deck_index = next_index
         st.rerun()
     if right.button("記住了 →", type="primary", use_container_width=True):
-        mastered = st.session_state.review_zone.pop(index)
+        mastered = st.session_state.review_zone.pop(card_index)
         if mastered.get("word") not in [r.get("word") for r in st.session_state.brain_zone]:
             st.session_state.brain_zone.append(mastered)
         update_word_status_in_supabase(mastered.get("word", ""), "mastered")
         log = get_log(local_today()).copy()
         log["remembered_cards"] = int(log.get("remembered_cards", 0)) + 1
         save_daily_log(log)
-        st.session_state.current_card_index = 0
+        st.session_state.last_review_card = card_key
+        st.session_state.review_deck = [key for key in st.session_state.review_deck if key != card_key]
+        if st.session_state.review_deck:
+            st.session_state.review_deck_index %= len(st.session_state.review_deck)
+        else:
+            st.session_state.review_deck_index = 0
         st.toast("記住 1 張，已加入今日數據")
         st.rerun()
 
@@ -1182,6 +1258,36 @@ def render_flashcards() -> None:
 # =========================================================
 # 8. A2 刷題
 # =========================================================
+def question_key(question: dict) -> str:
+    return " ".join(str(question.get("question_text") or "").casefold().split())
+
+
+def build_quiz_batch(cloud_questions: list[dict], skill: str | None, size: int = 20) -> list[dict]:
+    """合併雲端與內建題庫、去重，並優先避開上一批題目。"""
+    combined = [*cloud_questions, *A2_QUESTION_BANK]
+    unique_questions = {}
+    for question in combined:
+        if not isinstance(question, dict) or not question_key(question):
+            continue
+        if skill and question.get("skill") != skill:
+            continue
+        unique_questions.setdefault(question_key(question), question)
+
+    pool = list(unique_questions.values())
+    recent = set(st.session_state.quiz_recent_questions)
+    unseen = [question for question in pool if question_key(question) not in recent]
+    random.shuffle(unseen)
+
+    if len(unseen) < min(size, len(pool)):
+        used = [question for question in pool if question_key(question) in recent]
+        random.shuffle(used)
+        unseen.extend(used)
+
+    batch = unseen[:min(size, len(unseen))]
+    st.session_state.quiz_recent_questions = [question_key(question) for question in batch]
+    return batch
+
+
 def render_a2_quiz() -> None:
     brand_header(); st.markdown("## A2 刷題")
     skills = {"全部":None, "閱讀 Reading":"reading", "聽力 Listening":"listening", "寫作 Writing":"writing", "口說 Speaking":"speaking"}
@@ -1190,16 +1296,22 @@ def render_a2_quiz() -> None:
         loading = render_loading_animation("貓咪正在載入 A2 題目…", "loading_a2_questions")
         try:
             query = supabase.table("quiz_questions").select("*").eq("is_active", True)
-            if skills[selected]:
-                query = query.eq("skill", skills[selected])
-            questions = query.execute().data or []
-            random.shuffle(questions)
-            st.session_state.quiz_questions = questions[:10]
+            # 一次讀取雲端題庫，再與 32 題內建題庫合併；選擇技能後於本機篩選。
+            cloud_questions = query.execute().data or []
+            st.session_state.quiz_questions = build_quiz_batch(
+                cloud_questions,
+                skills[selected],
+                size=20,
+            )
             st.session_state.quiz_index = st.session_state.quiz_score = 0
             st.session_state.quiz_answered = False
             st.rerun()
         except Exception as exc:
-            st.error(f"載入題目失敗：{exc}")
+            # 雲端暫時無法連線時仍可使用內建題庫。
+            st.session_state.quiz_questions = build_quiz_batch([], skills[selected], size=20)
+            st.session_state.quiz_index = st.session_state.quiz_score = 0
+            st.session_state.quiz_answered = False
+            st.warning(f"雲端題庫暫時無法連線，已切換為內建 A2 題庫：{exc}")
         finally:
             loading.empty()
     render_lottie_state("quiz", height=275, loop=True, key="cat_quiz_box_peek")
@@ -1210,8 +1322,10 @@ def render_a2_quiz() -> None:
     index = st.session_state.quiz_index
     if index >= len(questions):
         st.success(f"本輪完成：答對 {st.session_state.quiz_score} / {len(questions)} 題")
-        if st.button("再練一次", type="primary"):
-            st.session_state.quiz_index = st.session_state.quiz_score = 0
+        if st.button("換一批題目", type="primary"):
+            st.session_state.quiz_questions = []
+            st.session_state.quiz_index = 0
+            st.session_state.quiz_score = 0
             st.session_state.quiz_answered = False
             st.rerun()
         return
