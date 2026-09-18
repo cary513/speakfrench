@@ -727,6 +727,49 @@ def render_timer_scene(animation_name: str | None = None) -> None:
     )
 
 
+def render_home_timer() -> None:
+    """首頁使用的精簡即時計時器；只在學習進行中顯示。"""
+    base_seconds = timer_elapsed()
+    components.html(
+        f"""
+        <div class="timer-wrap">
+          <div class="timer-label">今日學習計時</div>
+          <div id="home-clock" class="timer-value">00:00:00</div>
+        </div>
+        <style>
+          html,body{{margin:0;background:transparent;font-family:Arial,sans-serif}}
+          .timer-wrap{{box-sizing:border-box;text-align:center;padding:14px 18px 16px;
+            border-radius:20px;background:#fff;border:1px solid rgba(23,23,23,.04);
+            box-shadow:0 10px 28px rgba(24,24,27,.05)}}
+          .timer-label{{color:#A36A00;font-size:12px;font-weight:750;letter-spacing:.12em}}
+          .timer-value{{margin-top:5px;color:#171717;font-size:34px;font-weight:780;
+            line-height:1.1;letter-spacing:.04em}}
+        </style>
+        <script>
+          const base={base_seconds}, started=Date.now();
+          function draw(){{
+            const elapsed=base+Math.floor((Date.now()-started)/1000);
+            const h=String(Math.floor(elapsed/3600)).padStart(2,'0');
+            const m=String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+            const s=String(elapsed%60).padStart(2,'0');
+            document.getElementById('home-clock').textContent=`${{h}}:${{m}}:${{s}}`;
+          }}
+          draw(); setInterval(draw,500);
+        </script>
+        """,
+        height=105,
+        scrolling=False,
+    )
+
+
+def begin_home_learning() -> None:
+    """從首頁開始一段全新的學習計時。"""
+    if st.session_state.timer_status != "idle":
+        reset_timer()
+    st.session_state.show_daily_log_form = False
+    start_timer()
+
+
 def render_daily_log_form(target_date: date) -> None:
     log = get_log(target_date).copy()
     st.markdown("### 完成學習紀錄")
@@ -1049,35 +1092,37 @@ def render_home() -> None:
     st.markdown(f'<div class="lg-hero-title">{greeting()}</div>', unsafe_allow_html=True)
     st.caption(datetime.now(TAIPEI_TZ).strftime("%A, %B %d"))
     render_search_module()
+
+    if st.session_state.timer_status == "running":
+        if st.button(
+            "完成學習",
+            type="primary",
+            use_container_width=True,
+            key="finish_home_learning",
+        ):
+            finish_timer()
+            st.rerun()
+        render_home_timer()
+    else:
+        if st.button(
+            "開始學習",
+            type="primary",
+            use_container_width=True,
+            key="start_home_learning",
+        ):
+            begin_home_learning()
+            st.rerun()
+
     today_log = get_log(local_today())
     render_stats(today_log)
     home_animation = home_animation_for_log(today_log)
 
-    if st.session_state.timer_status in {"running", "paused"}:
-        render_timer_scene(home_animation)
-        left, right = st.columns(2)
-        if st.session_state.timer_status == "running":
-            if left.button("暫停", use_container_width=True):
-                pause_timer(); st.rerun()
-        elif left.button("繼續", type="primary", use_container_width=True):
-            start_timer(); st.rerun()
-        if right.button("結束學習", use_container_width=True):
-            finish_timer(); st.rerun()
-    elif st.session_state.timer_status == "completed":
-        render_lottie_state(home_animation, height=290, loop=True, key=f"cat_{home_animation}_completed")
-        st.success("今日學習完成！你又向目標靠近了一點。")
-        if st.button("查看並完成今日紀錄", type="primary", use_container_width=True):
-            st.session_state.show_daily_log_form = True
-    elif st.session_state.timer_status == "results":
-        render_lottie_state(home_animation, height=275, loop=True, key=f"cat_{home_animation}_results")
-        st.success("今日成果與心情紀錄已儲存。好好休息一下吧！")
-        if st.button("開始新的學習", type="primary", use_container_width=True):
-            reset_timer()
-            st.rerun()
-    else:
-        render_lottie_state(home_animation, height=275, loop=True, key=f"cat_{home_animation}_idle")
-        if st.button("開始今日學習", type="primary", use_container_width=True):
-            start_timer(); st.rerun()
+    render_lottie_state(
+        home_animation,
+        height=275,
+        loop=True,
+        key=f"cat_{home_animation}_{st.session_state.timer_status}",
+    )
     if st.session_state.show_daily_log_form:
         render_daily_log_form(local_today())
     st.write("")
